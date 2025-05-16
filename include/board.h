@@ -50,37 +50,23 @@ typedef short Coord;
 
 #define IN_BOUNDS(x, y) ((x) >= 0 && (x) < 8 && (y) >= 0 && (y) < 8)
 
-// /**
-//  * Creates a new board with the initial position
-//  * @return a pointer to the new board (must be freed)
-// */
-// Board* createBoard();
+void printBoard(Board* board, byte display_side);
 
-// /**
-//  * Prints the board to stdout
-//  * @param board the board to print
-// */
-// void printBoard(byte display_side);
+char getPieceLetter (byte piece);
 
-// char* getPieceIcon(byte piece, byte color);
+byte getFromLocation(Board* board, byte index);
 
-// char* getPieceLetter(byte piece);
+Bitboard getFriendly (Board* board, byte color);
 
-// /**
-//  * Gets the piece at a location
-//  * @param board the board to get the piece from
-//  * @param index the index of the square
-//  * @return the piece at the location
-// */
-// byte getFromLocation(byte index);
+Bitboard getPieceMask (Board* board);
 
-// void setSquare(Bitboard *b, byte value);
+void setSquare(Bitboard *b, byte value);
 
-// void addMoves(short moves[], int len);
+void addMoves(Board* board, short moves[], int len);
 
-// void addMove (short move);
+void addMove (Board* board, short move);
 
-// void clearMoves();
+void clearMoves(Board* board);
 
 
 #endif // BOARD_H
