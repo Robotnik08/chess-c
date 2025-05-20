@@ -1,7 +1,7 @@
 #ifndef MOVE_H
 #define MOVE_H
 
-#include <common.h>
+#include "common.h"
 
 // format:
 // F: from square
@@ -33,10 +33,10 @@ typedef short Move;
 // Make sure to free the result of this function
 char* getNotation(Move move);
 
-// void movePiece(Move move);
+void movePiece(Board* board, Move move);
 
-// void printMove(Move move);
+void printMove(Move move);
 
-// void printMoves();
+void printMoves(Board* board);
 
 #endif

@@ -1,10 +1,19 @@
-#include <board.h>
-#include <common.h>
+#include "board.h"
 
-void printBoard (Board* board, byte display_side) {
+#include "common.h"
+
+bool checkInBounds(Coord coord) {
+    return IN_BOUNDS(coord.file, coord.rank);
+}
+
+void printBoard(Board* board, byte display_side) {
     printf("  |-----------------|  \n");
     for (int rank = 7; rank >= 0; rank--) {
-        printf("%d | ", rank + 1);
+        if (display_side == WHITE) {
+            printf("%d | ", rank + 1);
+        } else {
+            printf("%d | ", 8 - rank);
+        }
         for (int file = 0; file < 8; file++) {
             int square = rank * 8 + file;
             if (display_side == BLACK) {
@@ -32,14 +41,18 @@ void printBoard (Board* board, byte display_side) {
         printf("|  \n");
     }
     printf("  |-----------------|  \n");
-    printf("    a b c d e f g h    \n");
+    if (display_side == WHITE) {
+        printf("    a b c d e f g h    \n");
+    } else {
+        printf("    h g f e d c b a    \n");
+    }
 }
 
-char getPieceLetter (byte piece) {
+char getPieceLetter(byte piece) {
     return "PNBRQK..pnbrqk.."[piece];
 }
 
-byte getFromLocation (Board* board, byte index) {
+byte getFromLocation(Board* board, byte index) {
     for (int i = 0; i < BB_MAXVAL; i++) {
         if (board->bitboards[i] & (1LL << index)) {
             return i;
@@ -48,36 +61,36 @@ byte getFromLocation (Board* board, byte index) {
     return -1;
 }
 
-Bitboard getFriendly (Board* board, byte color) {
+Bitboard getFriendly(Board* board, byte color) {
     if (color) color = BLACK;
     return board->bitboards[color | PAWN] | board->bitboards[color | KNIGHT] | board->bitboards[color | BISHOP] | board->bitboards[color | ROOK] | board->bitboards[color | QUEEN] | board->bitboards[color | KING];
 }
 
-Bitboard getPieceMask (Board* board) {
+Bitboard getPieceMask(Board* board) {
     return getFriendly(board, WHITE) | getFriendly(board, BLACK);
 }
 
-void setSquare (Bitboard *b, byte index) {
+void setSquare(Bitboard *b, byte index) {
     *b |= 1LL << index;
 }
 
-void setSquareOnBoard (Board* board, byte index, byte piece, byte color) {
+void setSquareOnBoard(Board* board, byte index, byte piece, byte color) {
     for (int i = 0; i < BB_MAXVAL; i++) {
         board->bitboards[i] &= ~(1LL << index);
     }
     board->bitboards[piece + color] |= (1LL << index);
 }
 
-void addMoves (Board* board, short moves[], int len) {
+void addMoves(Board* board, short moves[], int len) {
     for (int i = 0; i < len; i++) {
         board->moves[board->num_moves++] = moves[i];
     }
 }
 
-void addMove (Board* board, short move) {
+void addMove(Board* board, short move) {
     board->moves[board->num_moves++] = move;
 }
 
-void clearMoves (Board* board) {
+void clearMoves(Board* board) {
     board->num_moves = 0;
 }

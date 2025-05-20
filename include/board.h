@@ -1,7 +1,7 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-#include <common.h>
+#include "common.h"
 
 typedef unsigned long long int Bitboard;
 typedef unsigned char byte;
@@ -42,29 +42,30 @@ typedef struct {
     byte num_moves;
 } Board;
 
-typedef short Coord;
-
-#define COORD(x, y) ((x) + (y) << 8)
-#define COORD_X(coord) ((coord) & 0xFF)
-#define COORD_Y(coord) ((coord) >> 8)
+typedef struct {
+    int file;
+    int rank;
+} Coord;
 
 #define IN_BOUNDS(x, y) ((x) >= 0 && (x) < 8 && (y) >= 0 && (y) < 8)
 
+bool checkInBounds(Coord coord);
+
 void printBoard(Board* board, byte display_side);
 
-char getPieceLetter (byte piece);
+char getPieceLetter(byte piece);
 
 byte getFromLocation(Board* board, byte index);
 
-Bitboard getFriendly (Board* board, byte color);
+Bitboard getFriendly(Board* board, byte color);
 
-Bitboard getPieceMask (Board* board);
+Bitboard getPieceMask(Board* board);
 
 void setSquare(Bitboard *b, byte value);
 
 void addMoves(Board* board, short moves[], int len);
 
-void addMove (Board* board, short move);
+void addMove(Board* board, short move);
 
 void clearMoves(Board* board);
 
