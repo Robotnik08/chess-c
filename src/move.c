@@ -46,9 +46,9 @@ void printMove(Move move) {
     free(notation);
 }
 
-void printMoves(Board* board) {
+void printMoves(Board* board, bool numbered) {
     for (int i = 0; i < board->num_moves; i++) {
-        printf("%d. ", i + 1);
+        if (numbered) printf("%d. ", i + 1);
         printMove(board->moves[i]);
     }
 }

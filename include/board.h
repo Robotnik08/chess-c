@@ -23,10 +23,10 @@ typedef unsigned char byte;
 
 #define EMPTY 255
 
-#define CASTLE_WHITE_KINGSIDE 0
-#define CASTLE_WHITE_QUEENSIDE 1
-#define CASTLE_BLACK_KINGSIDE 2
-#define CASTLE_BLACK_QUEENSIDE 4
+#define CASTLE_WHITE_KINGSIDE 1
+#define CASTLE_WHITE_QUEENSIDE 2
+#define CASTLE_BLACK_KINGSIDE 4
+#define CASTLE_BLACK_QUEENSIDE 8
 
 typedef struct {
     Bitboard bitboards [BB_MAXVAL];
@@ -34,8 +34,9 @@ typedef struct {
     bool side_to_move;
     byte castling_rights;
 
-    byte en_passant_file;
+    char en_passant_file;
     short halfmove_clock;
+    short fullmove_number;
 
 
     short moves [MAX_MOVES];

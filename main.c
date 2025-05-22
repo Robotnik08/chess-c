@@ -3,6 +3,7 @@
 #include "chess.h"
 #include "move.h"
 #include "magic.h"
+#include "FEN.h"
 
 Move inputMove() {
     char input[5];
@@ -17,29 +18,51 @@ Move inputMove() {
     return MOVE(from, to, 0);
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     Board* board = calloc(1, sizeof(Board));
-    board->bitboards[PAWN | WHITE] = 0x000000000000FF00;
-    board->bitboards[PAWN | BLACK] = 0x00FF000000000000;
-    board->bitboards[ROOK | WHITE] = 0x0000000000000081;
-    board->bitboards[ROOK | BLACK] = 0x8100000000000000;
-    board->bitboards[KNIGHT | WHITE] = 0x0000000000000042;
-    board->bitboards[KNIGHT | BLACK] = 0x4200000000000000;
-    board->bitboards[BISHOP | WHITE] = 0x0000000000000024;
-    board->bitboards[BISHOP | BLACK] = 0x2400000000000000;
-    board->bitboards[QUEEN | WHITE] = 0x0000000000000008;
-    board->bitboards[QUEEN | BLACK] = 0x0800000000000000;
-    board->bitboards[KING | WHITE] = 0x0000000000000010;
-    board->bitboards[KING | BLACK] = 0x1000000000000000;
-
-    board->side_to_move = WHITE;
 
     initMaps();
     initMagic();
 
+    if (argc == 2 && strcmp(argv[1], "engine") == 0) {
+        while (1) {
+            char input[255];
+            scanf("%s", input);
+            input[255] = '\0';
+
+            if (strcmp(input, "getmoves") == 0) {
+                generateMoves(board);
+                printMoves(board, false);
+            }
+
+            if (strcmp(input, "getfen") == 0) {
+                char* fen = generateFEN(board);
+                printf("%s\n", fen);
+                free(fen);
+            }
+
+            if (strcmp(input, "setfen") == 0) {
+                char fen[255];
+                scanf("%s", fen);
+                parseFEN(fen, board);
+            }
+
+
+            if (strcmp(input, "end") == 0) {
+                break;
+            }
+        }
+
+        freeMagic();
+        return 0;
+    }
+
+    
+    parseFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", board);
+
     while (1) {
         generateMoves(board);
-        printMoves(board);
+        printMoves(board, true);
         printBoard(board, board->side_to_move);
         movePiece(board, inputMove());
         board->side_to_move = board->side_to_move ? WHITE : BLACK;

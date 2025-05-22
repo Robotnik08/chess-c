@@ -37,6 +37,6 @@ void movePiece(Board* board, Move move);
 
 void printMove(Move move);
 
-void printMoves(Board* board);
+void printMoves(Board* board, bool numbered);
 
 #endif
