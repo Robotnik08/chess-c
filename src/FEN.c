@@ -7,6 +7,17 @@ void parseFEN(char* fen, Board* board) {
     strcpy(copy, fen);
     char* ptr = copy;
 
+    // reset board
+    for (int i = 0; i < BB_MAXVAL; i++) {
+        board->bitboards[i] = 0ULL;
+    }
+    board->side_to_move = WHITE;
+    board->castling_rights = 0;
+    board->en_passant_file = -1;
+    board->halfmove_clock = 0;
+    board->fullmove_number = 1;
+    board->num_moves = 0;
+
     // parse pieces
     int rank = 7, file = 0;
     while (*ptr && rank >= 0) {

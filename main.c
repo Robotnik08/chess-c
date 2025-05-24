@@ -33,11 +33,15 @@ int main(int argc, char* argv[]) {
             if (strcmp(input, "getmoves") == 0) {
                 generateMoves(board);
                 printMoves(board, false);
+                printf("ok\n");
+                fflush(stdout);
             }
 
             if (strcmp(input, "getfen") == 0) {
                 char* fen = generateFEN(board);
                 printf("%s\n", fen);
+                printf("ok\n");
+                fflush(stdout);
                 free(fen);
             }
 
@@ -54,6 +58,32 @@ int main(int argc, char* argv[]) {
                     }
                     parseFEN(fen, board);
                     printf("ok\n");
+                    fflush(stdout);
+                }
+            }
+
+            if (strcmp(input, "setmovehistory") == 0) { // Set the board based from start to move history
+                char moves[6 * 1000]; // a Move takes max 6 characters (e.g., "e2e4 " or "e7e8q "), around 16000 moves are possible? let's assume 1000 moves max
+
+                int c;
+                while ((c = getchar()) != '\n' && c != EOF); // discard leftover input
+                if (fgets(moves, sizeof(moves), stdin)) {
+                    // Remove trailing newline if present
+                    size_t len = strlen(moves);
+                    if (len > 0 && moves[len - 1] == '\n') {
+                        moves[len - 1] = '\0';
+                    }
+
+                    char* token = strtok(moves, " ");
+                    while (token != NULL) {
+                        Move move = MOVE((token[0] - 'a') + 8 * (token[1] - '1'),
+                                         (token[2] - 'a') + 8 * (token[3] - '1'), 0);
+                        movePiece(board, move);
+                        // board->side_to_move = board->side_to_move ? WHITE : BLACK;
+                        token = strtok(NULL, " ");
+                    }
+                    printf("ok\n");
+                    fflush(stdout);
                 }
             }
 
