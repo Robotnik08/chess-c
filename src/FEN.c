@@ -2,79 +2,83 @@
 #include "board.h"
 
 void parseFEN(char* fen, Board* board) {
-    printf("Parsing FEN: %s\n", fen);
+    // copy FEN
     char* copy = malloc(strlen(fen) + 1);
     strcpy(copy, fen);
-    char* token = strtok(copy, " ");
-    int index = 0;
+    char* ptr = copy;
 
-    printf("Parsing pieces...\n");
-    // pieces
-    for (int rank = 7; rank >= 0; rank--) {
-        for (int file = 0; file < 8; file++) {
-            char piece = token[index++];
-            if (piece >= '1' && piece <= '8') {
-                int empty_count = piece - '0';
-                for (int i = 0; i < empty_count; i++) {
-                    board->bitboards[EMPTY] |= (1ULL << (rank * 8 + file + i));
-                }
-                file += empty_count - 1;
-            } else {
-                switch (piece) {
-                    case 'P': board->bitboards[PAWN | WHITE] |= (1ULL << (rank * 8 + file)); break;
-                    case 'p': board->bitboards[PAWN | BLACK] |= (1ULL << (rank * 8 + file)); break;
-                    case 'R': board->bitboards[ROOK | WHITE] |= (1ULL << (rank * 8 + file)); break;
-                    case 'r': board->bitboards[ROOK | BLACK] |= (1ULL << (rank * 8 + file)); break;
-                    case 'N': board->bitboards[KNIGHT | WHITE] |= (1ULL << (rank * 8 + file)); break;
-                    case 'n': board->bitboards[KNIGHT | BLACK] |= (1ULL << (rank * 8 + file)); break;
-                    case 'B': board->bitboards[BISHOP | WHITE] |= (1ULL << (rank * 8 + file)); break;
-                    case 'b': board->bitboards[BISHOP | BLACK] |= (1ULL << (rank * 8 + file)); break;
-                    case 'Q': board->bitboards[QUEEN | WHITE] |= (1ULL << (rank * 8 + file)); break;
-                    case 'q': board->bitboards[QUEEN | BLACK] |= (1ULL << (rank * 8 + file)); break;
-                    case 'K': board->bitboards[KING | WHITE] |= (1ULL << (rank * 8 + file)); break;
-                    case 'k': board->bitboards[KING | BLACK] |= (1ULL << (rank * 8 + file)); break;
-                }
+    // parse pieces
+    int rank = 7, file = 0;
+    while (*ptr && rank >= 0) {
+        if (*ptr == '/' || *ptr == ' ') {
+            rank--;
+            file = 0;
+        } else if (*ptr >= '1' && *ptr <= '8') {
+            int empty_count = *ptr - '0';
+            file += empty_count;
+        } else {
+            int sq = rank * 8 + file;
+            switch (*ptr) {
+                case 'P': board->bitboards[PAWN | WHITE] |= (1ULL << sq); break;
+                case 'p': board->bitboards[PAWN | BLACK] |= (1ULL << sq); break;
+                case 'R': board->bitboards[ROOK | WHITE] |= (1ULL << sq); break;
+                case 'r': board->bitboards[ROOK | BLACK] |= (1ULL << sq); break;
+                case 'N': board->bitboards[KNIGHT | WHITE] |= (1ULL << sq); break;
+                case 'n': board->bitboards[KNIGHT | BLACK] |= (1ULL << sq); break;
+                case 'B': board->bitboards[BISHOP | WHITE] |= (1ULL << sq); break;
+                case 'b': board->bitboards[BISHOP | BLACK] |= (1ULL << sq); break;
+                case 'Q': board->bitboards[QUEEN | WHITE] |= (1ULL << sq); break;
+                case 'q': board->bitboards[QUEEN | BLACK] |= (1ULL << sq); break;
+                case 'K': board->bitboards[KING | WHITE] |= (1ULL << sq); break;
+                case 'k': board->bitboards[KING | BLACK] |= (1ULL << sq); break;
             }
+            file++;
         }
-        index++;
+        ptr++;
     }
 
-    printf("Parsing side to move...\n");
+    // skip space
+    while (*ptr == ' ') ptr++;
+
     // side to move
-    token = strtok(NULL, " ");
-    board->side_to_move = (token[0] == 'w') ? WHITE : BLACK;
+    board->side_to_move = (*ptr == 'w') ? WHITE : BLACK;
+    while (*ptr && *ptr != ' ') ptr++;
+    while (*ptr == ' ') ptr++;
 
-    printf("Parsing castling rights...\n");
     // castling rights
-    token = strtok(NULL, " ");
     board->castling_rights = 0;
-    for (int i = 0; token[i] != '\0'; i++) {
-        switch (token[i]) {
-            case 'K': board->castling_rights |= CASTLE_WHITE_KINGSIDE; break;
-            case 'Q': board->castling_rights |= CASTLE_WHITE_QUEENSIDE; break;
-            case 'k': board->castling_rights |= CASTLE_BLACK_KINGSIDE; break;
-            case 'q': board->castling_rights |= CASTLE_BLACK_QUEENSIDE; break;
+    if (*ptr == '-') {
+        ptr++;
+    } else {
+        while (*ptr && *ptr != ' ') {
+            switch (*ptr) {
+                case 'K': board->castling_rights |= CASTLE_WHITE_KINGSIDE; break;
+                case 'Q': board->castling_rights |= CASTLE_WHITE_QUEENSIDE; break;
+                case 'k': board->castling_rights |= CASTLE_BLACK_KINGSIDE; break;
+                case 'q': board->castling_rights |= CASTLE_BLACK_QUEENSIDE; break;
+            }
+            ptr++;
         }
     }
+    while (*ptr == ' ') ptr++;
 
-    printf("Parsing en passant...\n");
     // en passant
-    token = strtok(NULL, " ");
-    if (token[0] == '-') {
+    if (*ptr == '-') {
         board->en_passant_file = -1;
+        ptr++;
     } else {
-        board->en_passant_file = token[0] - 'a';
+        board->en_passant_file = *ptr - 'a';
+        ptr += 2; // skip file and rank
     }
+    while (*ptr == ' ') ptr++;
 
-    printf("Parsing halfmove clock...\n");
     // halfmove clock
-    token = strtok(NULL, " ");
-    board->halfmove_clock = atoi(token);
+    board->halfmove_clock = atoi(ptr);
+    while (*ptr && *ptr != ' ') ptr++;
+    while (*ptr == ' ') ptr++;
 
-    printf("Parsing fullmove number...\n");
     // fullmove number
-    token = strtok(NULL, " ");
-    board->fullmove_number = atoi(token);
+    board->fullmove_number = atoi(ptr);
 
     free(copy);
 }

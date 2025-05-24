@@ -43,8 +43,18 @@ int main(int argc, char* argv[]) {
 
             if (strcmp(input, "setfen") == 0) {
                 char fen[255];
-                scanf("%s", fen);
-                parseFEN(fen, board);
+                // Clear input buffer before reading the FEN string
+                int c;
+                while ((c = getchar()) != '\n' && c != EOF); // discard leftover input
+                if (fgets(fen, sizeof(fen), stdin)) {
+                    // Remove trailing newline if present
+                    size_t len = strlen(fen);
+                    if (len > 0 && fen[len - 1] == '\n') {
+                        fen[len - 1] = '\0';
+                    }
+                    parseFEN(fen, board);
+                    printf("ok\n");
+                }
             }
 
 
