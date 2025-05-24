@@ -92,16 +92,16 @@ void initPawnAttackMaps() {
         int rank = i / 8;
         int file = i % 8;
 
-        if (rank == 0 || rank == 7) {
-            continue;
-        }
-
         if (file < 7) {
             map |= (1LL << ((rank + 1) * 8 + file + 1));
-            opposite |= (1LL << ((rank - 1) * 8 + file + 1));
+            if (rank > 0) {
+                opposite |= (1LL << ((rank - 1) * 8 + file + 1));
+            }
         }
-        if (file > 1) {
-            map |= (1LL << ((rank + 1) * 8 + file - 1));
+        if (file > 0) {
+            if (rank < 7) {
+                map |= (1LL << ((rank + 1) * 8 + file - 1));
+            }
             opposite |= (1LL << ((rank - 1) * 8 + file - 1));
         }
 
@@ -198,12 +198,29 @@ void generatePawnMoves(Board* board, int index, byte color) {
     Bitboard moves = pawnAttackMaps[index] & enemyPieces; // only attack enemy pieces
     for (int i = 0; i < 64; i++) {
         if (moves & (1LL << i)) {
-            addMove(board, MOVE(index, i, 0));
+            if (i < 8 || i >= 56) {
+                // promotion
+                addMove(board, MOVE(index, i, PROMOTION_KNIGHT));
+                addMove(board, MOVE(index, i, PROMOTION_BISHOP));
+                addMove(board, MOVE(index, i, PROMOTION_ROOK));
+                addMove(board, MOVE(index, i, PROMOTION_QUEEN));
+            } else {
+                addMove(board, MOVE(index, i, 0));
+            }
         }
     }
 
     if (getFromLocation(board, index + forward) == EMPTY) {
-        addMove(board, MOVE(index, index + forward, 0));
+        if (index + forward < 8 || index + forward >= 56) {
+            // promotion
+            addMove(board, MOVE(index, index + forward, PROMOTION_KNIGHT));
+            addMove(board, MOVE(index, index + forward, PROMOTION_BISHOP));
+            addMove(board, MOVE(index, index + forward, PROMOTION_ROOK));
+            addMove(board, MOVE(index, index + forward, PROMOTION_QUEEN));
+        } else {
+            addMove(board, MOVE(index, index + forward, 0));
+        }
+
 
         if (rank == (color == WHITE ? 1 : 6)) {
             if (getFromLocation(board, index + forward * 2) == EMPTY) {

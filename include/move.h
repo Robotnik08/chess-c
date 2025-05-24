@@ -25,10 +25,10 @@ typedef short Move;
 #define EN_PASSANT 1
 #define PAWN_LEAP 2
 #define CASTLE 3
-#define PROMOTION_QUEEN 3
-#define PROMOTION_ROOK 4
+#define PROMOTION_KNIGHT 4
 #define PROMOTION_BISHOP 5
-#define PROMOTION_KNIGHT 6
+#define PROMOTION_ROOK 6
+#define PROMOTION_QUEEN 7
 
 // Make sure to free the result of this function
 char* getNotation(Move move);

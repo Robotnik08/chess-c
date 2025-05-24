@@ -6,12 +6,24 @@ char* getNotation(Move move) {
     int to = TO(move);
     int extra = EXTRA(move);
 
-    char* notation = (char*) malloc(6 * sizeof(char));
-    notation[0] = 'a' + (from % 8);
-    notation[1] = '1' + (from / 8);
-    notation[2] = 'a' + (to % 8);
-    notation[3] = '1' + (to / 8);
-    notation[4] = '\0';
+    char* notation = (char*) malloc(10 * sizeof(char));
+    int i = 0;
+    notation[i++] = 'a' + (from % 8);
+    notation[i++] = '1' + (from / 8);
+    notation[i++] = 'a' + (to % 8);
+    notation[i++] = '1' + (to / 8);
+
+    if (extra == EN_PASSANT) {
+        notation[i++] = 'e';
+    } else if (extra == PAWN_LEAP) {
+        notation[i++] = 'l';
+    } else if (extra == CASTLE) {
+        notation[i++] = 'o';
+    } else if (extra >= PROMOTION_KNIGHT && extra <= PROMOTION_QUEEN) {
+        notation[i++] = "nbrq"[extra - PROMOTION_KNIGHT];
+    }
+
+    notation[i++] = '\0';
 
     return notation;
 }
@@ -33,6 +45,10 @@ void movePiece(Board* board, Move move) {
 
     // move the piece
     board->bitboards[piece] ^= (1LL << from);
+    
+    if (extra >= PROMOTION_KNIGHT && extra <= PROMOTION_QUEEN) {
+        piece = extra - PROMOTION_KNIGHT + KNIGHT; // convert promotion type to piece type
+    }
     board->bitboards[piece] |= (1LL << to);
 }
 
