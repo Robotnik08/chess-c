@@ -99,6 +99,31 @@ int main(int argc, char* argv[]) {
                 }
             }
 
+            if (strcmp(input, "getstate") == 0) {
+                switch (board->state) {
+                    case NONE:
+                        printf("none\n");
+                        break;
+                    case CHECKMATE:
+                        printf("checkmate\n");
+                        break;
+                    case STALEMATE:
+                        printf("stalemate\n");
+                        break;
+                    case FIFTY_MOVE_DRAW:
+                        printf("fifty_move_draw\n");
+                        break;
+                    case THREEFOLD_REPETITION:
+                        printf("threefold_repetition\n");
+                        break;
+                    case INSUFFICIENT_MATERIAL:
+                        printf("insufficient_material\n");
+                        break;
+                }
+                printf("ok\n");
+                fflush(stdout);
+            }
+
 
             if (strcmp(input, "end") == 0) {
                 break;

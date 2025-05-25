@@ -27,6 +27,16 @@ typedef unsigned long long int Bitboard;
 #define CASTLE_BLACK_KINGSIDE 4
 #define CASTLE_BLACK_QUEENSIDE 8
 
+typedef enum {
+    NONE = 0,
+
+    CHECKMATE,
+    STALEMATE,
+    FIFTY_MOVE_DRAW,
+    THREEFOLD_REPETITION,
+    INSUFFICIENT_MATERIAL
+} BoardState;
+
 typedef struct {
     Bitboard bitboards [BB_MAXVAL];
 
@@ -40,6 +50,8 @@ typedef struct {
 
     short moves [MAX_MOVES];
     byte num_moves;
+
+    BoardState state;
 } Board;
 
 typedef struct {

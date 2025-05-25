@@ -17,6 +17,7 @@ void parseFEN(char* fen, Board* board) {
     board->halfmove_clock = 0;
     board->fullmove_number = 1;
     board->num_moves = 0;
+    board->state = NONE;
 
     // parse pieces
     int rank = 7, file = 0;

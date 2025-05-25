@@ -26,4 +26,8 @@ void generateKingMoves(Board* board, int index);
 
 void filterLegalMoves(Board* board);
 
+bool underAttack(Board* board, int index);
+
+void updateBoardState(Board* board);
+
 #endif

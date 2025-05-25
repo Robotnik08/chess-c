@@ -203,6 +203,8 @@ void generateMoves(Board* board) {
     }
 
     filterLegalMoves(board);
+
+    updateBoardState(board);
 }
 
 
@@ -378,7 +380,21 @@ void filterLegalMoves(Board* board) {
                     solvedEnPassant = true;
                 }
 
-                continue; // Either there is no pinned piece, or there are multiple pinned pieces, which are then not locked
+                if (pinnedCount == 0) {
+                    // no pinned pieces, the king is in check
+                    // remove all moves that do not end on the mask (unless it's a king move)
+                    for (int i = 0; i < board->num_moves; i++) {
+                        Move move = board->moves[i];
+                        if ((!(mask & (1LL << TO(move))) && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) {
+                            // this move is illegal, remove it
+                            board->moves[i--] = board->moves[--board->num_moves]; // replace with the last move, and check this index again
+                        }
+                    }
+                    
+                    // even thought the king is in check, we still need to block pinned pieces
+                }
+
+                continue;
             }
 
             // there is exactly one pinned piece, if this is a friendly piece, it's considered pinned
@@ -410,4 +426,170 @@ void filterLegalMoves(Board* board) {
             }
         }
     }
+
+    // check if the king is in check by a knight
+    Bitboard enemy_knights = board->bitboards[KNIGHT | enemy_color];
+
+    if (knightMaps[king_index] & enemy_knights) {
+        int knight_index = countTrailingZeros(knightMaps[king_index] & enemy_knights);
+        // remove all moves that do not end on the knight
+        for (int i = 0; i < board->num_moves; i++) {
+            Move move = board->moves[i];
+            if ((TO(move) != knight_index && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) {
+                // this move is illegal, remove it
+                board->moves[i--] = board->moves[--board->num_moves]; // replace with the last move, and check this index again
+            }
+        }
+    } else {
+        // check if the king is in check by a pawn
+        Bitboard enemy_pawns = board->bitboards[PAWN | enemy_color];
+        int left_pawn_index = (color == WHITE ? king_index + 7 : king_index - 9);
+        int right_pawn_index = (color == WHITE ? king_index + 9 : king_index - 7);
+        if (enemy_pawns & (1LL << left_pawn_index)) {
+            // remove all moves that do not end on the left pawn
+            for (int i = 0; i < board->num_moves; i++) {
+                Move move = board->moves[i];
+                if ((TO(move) != left_pawn_index && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) {
+                    // this move is illegal, remove it
+                    board->moves[i--] = board->moves[--board->num_moves]; // replace with the last move, and check this index again
+                }
+            }
+        } else if (enemy_pawns & (1LL << right_pawn_index)) {
+            // remove all moves that do not end on the right pawn
+            for (int i = 0; i < board->num_moves; i++) {
+                Move move = board->moves[i];
+                if ((TO(move) != right_pawn_index && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) {
+                    // this move is illegal, remove it
+                    board->moves[i--] = board->moves[--board->num_moves]; // replace with the last move, and check this index again
+                }
+            }
+        }
+    }
+
+    // finally remove king moves that would put the king in check
+    for (int i = 0; i < board->num_moves; i++) {
+        Move move = board->moves[i];
+        if (FROM(move) == king_index) {
+            int target_index = TO(move);
+            if (underAttack(board, target_index)) {
+                // this move is illegal, remove it
+                board->moves[i--] = board->moves[--board->num_moves]; // replace with the last move, and check this index again
+            }
+        }
+    }
+
+    if (color == WHITE) {
+        // check castling rights
+        if (board->castling_rights & CASTLE_WHITE_KINGSIDE) {
+            // check if the king can castle kingside
+            if (underAttack(board, 5)) {
+                // remove the kingside castling move
+                for (int i = 0; i < board->num_moves; i++) {
+                    Move move = board->moves[i];
+                    if (TO(move) == 6 && EXTRA(move) == CASTLE) {
+                        board->moves[i--] = board->moves[--board->num_moves]; // remove the kingside castling move
+                        break;
+                    }
+                }
+            }
+        }
+        if (board->castling_rights & CASTLE_WHITE_QUEENSIDE) {
+            // check if the king can castle queenside
+            if (underAttack(board, 3)) {
+                // remove the queenside castling move
+                for (int i = 0; i < board->num_moves; i++) {
+                    Move move = board->moves[i];
+                    if (TO(move) == 2 && EXTRA(move) == CASTLE) {
+                        board->moves[i--] = board->moves[--board->num_moves]; // remove the queenside castling move
+                        break;
+                    }
+                }
+            }
+        }
+    } else {
+        // check castling rights
+        if (board->castling_rights & CASTLE_BLACK_KINGSIDE) {
+            // check if the king can castle kingside
+            if (underAttack(board, 61)) {
+                // remove the kingside castling move
+                for (int i = 0; i < board->num_moves; i++) {
+                    Move move = board->moves[i];
+                    if (TO(move) == 62 && EXTRA(move) == CASTLE) {
+                        board->moves[i--] = board->moves[--board->num_moves]; // remove the kingside castling move
+                        break;
+                    }
+                }
+            }
+        }
+        if (board->castling_rights & CASTLE_BLACK_QUEENSIDE) {
+            // check if the king can castle queenside
+            if (underAttack(board, 59)) {
+                // remove the queenside castling move
+                for (int i = 0; i < board->num_moves; i++) {
+                    Move move = board->moves[i];
+                    if (TO(move) == 58 && EXTRA(move) == CASTLE) {
+                        board->moves[i--] = board->moves[--board->num_moves]; // remove the queenside castling move
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+bool underAttack(Board* board, int index) {
+    // check if the square is attacked by any piece of the enemy
+    Bitboard enemy_knights = board->bitboards[KNIGHT | OTHER_SIDE(board->side_to_move)];
+    Bitboard knight_attacks = knightMaps[index] & enemy_knights;
+    if (knight_attacks) {
+        return true; // knight attack
+    }
+
+    Bitboard enemy_kings = board->bitboards[KING | OTHER_SIDE(board->side_to_move)];
+    Bitboard king_attacks = kingMaps[index] & enemy_kings;
+    if (king_attacks) {
+        return true; // king attack
+    }
+
+    int left_pawn_index = (board->side_to_move == WHITE ? index + 7 : index - 9);
+    int right_pawn_index = (board->side_to_move == WHITE ? index + 9 : index - 7);
+    Bitboard enemy_pawns = board->bitboards[PAWN | OTHER_SIDE(board->side_to_move)];
+    if (enemy_pawns & (1LL << left_pawn_index) || enemy_pawns & (1LL << right_pawn_index)) {
+        return true; // pawn attack
+    }
+
+    Bitboard all_pieces = getPieceMask(board);
+
+    Bitboard enemy_rooks = board->bitboards[ROOK | OTHER_SIDE(board->side_to_move)] | board->bitboards[QUEEN | OTHER_SIDE(board->side_to_move)];
+    Bitboard rook_attacks = getRookAttacks(index, all_pieces);
+    if (rook_attacks & enemy_rooks) {
+        return true; // rook attack
+    }
+
+    Bitboard enemy_bishops = board->bitboards[BISHOP | OTHER_SIDE(board->side_to_move)] | board->bitboards[QUEEN | OTHER_SIDE(board->side_to_move)];
+    Bitboard bishop_attacks = getBishopAttacks(index, all_pieces);
+    if (bishop_attacks & enemy_bishops) {
+        return true; // bishop attack
+    }
+
+    return false; // not under attack
+}
+
+void updateBoardState(Board* board) {
+    if (board->num_moves == 0) {
+        // no moves available, check if the king is in check
+        int king_index = getIndex(board, KING | board->side_to_move);
+        if (king_index < 0) {
+            board->state = INSUFFICIENT_MATERIAL; // no king found, something is very wrong
+            return;
+        }
+        if (underAttack(board, king_index)) {
+            board->state = CHECKMATE; // king is in checkmate
+        } else {
+            board->state = STALEMATE; // king is not in check, but no moves available
+        }
+        return;
+    }
+
+    board->state = NONE; // no special state
 }
