@@ -4,7 +4,6 @@
 #include "common.h"
 
 typedef unsigned long long int Bitboard;
-typedef unsigned char byte;
 
 #define BB_MAXVAL 14
 #define BB_SIZE 64
@@ -50,6 +49,8 @@ typedef struct {
 
 #define IN_BOUNDS(x, y) ((x) >= 0 && (x) < 8 && (y) >= 0 && (y) < 8)
 
+#define OTHER_SIDE(side_to_move) ((side_to_move) ? WHITE : BLACK)
+
 bool checkInBounds(Coord coord);
 
 void printBoard(Board* board, byte display_side);
@@ -70,5 +71,6 @@ void addMove(Board* board, short move);
 
 void clearMoves(Board* board);
 
+int getIndex(Board* board, byte piece);
 
 #endif // BOARD_H

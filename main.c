@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
                         Move move = MOVE((token[0] - 'a') + 8 * (token[1] - '1'),
                                          (token[2] - 'a') + 8 * (token[3] - '1'), extra);
                         movePiece(board, move);
-                        // board->side_to_move = board->side_to_move ? WHITE : BLACK;
+                        board->side_to_move = OTHER_SIDE(board->side_to_move);
                         token = strtok(NULL, " ");
                     }
                     printf("ok\n");
@@ -117,7 +117,7 @@ int main(int argc, char* argv[]) {
         printMoves(board, true);
         printBoard(board, board->side_to_move);
         movePiece(board, inputMove());
-        board->side_to_move = board->side_to_move ? WHITE : BLACK;
+        board->side_to_move = OTHER_SIDE(board->side_to_move);
     }
 
     freeMagic();

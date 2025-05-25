@@ -6,4 +6,10 @@
 #include <string.h>
 #include <stdbool.h>
 
+typedef unsigned char byte;
+
+int countBits(unsigned long long int n);
+
+int countTrailingZeros(unsigned long long int n);
+
 #endif

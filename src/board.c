@@ -58,7 +58,7 @@ byte getFromLocation(Board* board, byte index) {
             return i;
         }
     }
-    return -1;
+    return EMPTY;
 }
 
 Bitboard getFriendly(Board* board, byte color) {
@@ -93,4 +93,13 @@ void addMove(Board* board, short move) {
 
 void clearMoves(Board* board) {
     board->num_moves = 0;
+}
+
+int getIndex(Board* board, byte piece) {
+    for (int i = 0; i < 64; i++) {
+        if (board->bitboards[piece] & (1ULL << i)) {
+            return i;
+        }
+    }
+    return -1;
 }

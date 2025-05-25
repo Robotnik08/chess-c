@@ -8,13 +8,11 @@
 
 void initMaps();
 
-void initMaps();
 void initKnightMaps();
 void initKingMaps();
 void initPawnAttackMaps();
+void initDirectionalMasks();
 
-
-int checkMove(Board* board, Move move);
 
 void generateMoves(Board* board);
 
@@ -26,5 +24,6 @@ void generateKnightMoves(Board* board, int index);
 
 void generateKingMoves(Board* board, int index);
 
+void filterLegalMoves(Board* board);
 
 #endif
