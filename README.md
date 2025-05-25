@@ -4,6 +4,13 @@ Chess implementation in C
 
 ## Features
 
+- Play chess
+- Get legal moves
+- Load FEN
+- Get FEN
+- Make moves
+- Unmake moves
+
 ## Rules of Chess
 
 - [X] Sliding Bishop move generation
