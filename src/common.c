@@ -16,3 +16,11 @@ int countTrailingZeros(unsigned long long int n) {
     }
     return count;
 }
+
+void printBits(unsigned long long int n) {
+    for (int i = 63; i >= 0; i--) {
+        putchar((n & (1ULL << i)) ? '1' : '0');
+        if (i % 8 == 0) putchar(' ');
+    }
+    putchar('\n');
+}

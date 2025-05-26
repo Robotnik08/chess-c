@@ -4,7 +4,7 @@
 #include "common.h"
 #include "board.h"
 
-void parseFEN(char* fen, Board* board);
-char* generateFEN(Board* board);
+void parseFEN(char* fen);
+char* generateFEN();
 
 #endif

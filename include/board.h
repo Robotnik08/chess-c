@@ -8,7 +8,7 @@ typedef unsigned long long int Bitboard;
 #define BB_MAXVAL 14
 #define BB_SIZE 64
 #define NUM_SQUARES 64
-#define MAX_MOVES 218
+#define MAX_MOVES 256
 
 #define WHITE 0
 #define BLACK 8
@@ -47,11 +47,14 @@ typedef struct {
     short halfmove_clock;
     short fullmove_number;
 
-
-    short moves [MAX_MOVES];
-    byte num_moves;
-
     BoardState state;
+
+    short move_history [1000]; // assuming a maximum of 1000 moves in a game (which isn't true, but is still more then enough for practical purposes)
+    byte capture_history [1000]; // stores the captured piece for each move
+    byte castling_rights_history [1000]; // stores the castling rights for each move
+    char en_passant_file_history [1000]; // stores the en passant file for each move
+
+    int move_history_count;
 } Board;
 
 typedef struct {
@@ -65,24 +68,18 @@ typedef struct {
 
 bool checkInBounds(Coord coord);
 
-void printBoard(Board* board, byte display_side);
+void printBoard(byte display_side);
 
 char getPieceLetter(byte piece);
 
-byte getFromLocation(Board* board, byte index);
+byte getFromLocation(byte index);
 
-Bitboard getFriendly(Board* board, byte color);
+Bitboard getFriendly(byte color);
 
-Bitboard getPieceMask(Board* board);
+Bitboard getPieceMask();
 
 void setSquare(Bitboard *b, byte value);
 
-void addMoves(Board* board, short moves[], int len);
-
-void addMove(Board* board, short move);
-
-void clearMoves(Board* board);
-
-int getIndex(Board* board, byte piece);
+int getIndex(byte piece);
 
 #endif // BOARD_H

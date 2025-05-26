@@ -5,22 +5,38 @@
 #include "magic.h"
 #include "FEN.h"
 
-Move inputMove() {
-    char input[5];
-    printf("Enter a move: ");
-    scanf("%s", input);
-    input[4] = '\0';
+#include <time.h>
 
-    // convert the input to a move
-    int from = (input[0] - 'a') + 8 * (input[1] - '1');
-    int to = (input[2] - 'a') + 8 * (input[3] - '1');
+Board board;
 
-    return MOVE(from, to, 0);
+int checkMoveCount (int depth, bool root) {
+    if (depth == 0) {
+        return 1;
+    }
+
+    Move moves[MAX_MOVES];
+    int num_moves = generateMoves(moves);
+    int nodes = 0;
+
+    for (int i = 0; i < num_moves; i++) {
+        // Board backup = board; // backup the current board state
+        makeMove(moves[i]);
+        int count = checkMoveCount(depth - 1, false);
+        nodes += count;
+        // if (root) {
+        //     char* notation = getNotation(moves[i]);
+        //     // printf("%c%c%c%c: %d\n", notation[0], notation[1], notation[2], notation[3], count);
+        //     printf("%s: %d\n", notation, count);
+        //     free(notation);
+        // }
+        unmakeMove();
+        // board = backup; // restore the board state
+    }
+
+    return nodes;
 }
 
 int main(int argc, char* argv[]) {
-    Board* board = calloc(1, sizeof(Board));
-
     initMaps();
     initMagic();
 
@@ -31,14 +47,15 @@ int main(int argc, char* argv[]) {
             input[255] = '\0';
 
             if (strcmp(input, "getmoves") == 0) {
-                generateMoves(board);
-                printMoves(board, false);
+                Move moves[MAX_MOVES];
+                int n = generateMoves(moves);
+                printMoves(false, moves, n);
                 printf("ok\n");
                 fflush(stdout);
             }
 
             if (strcmp(input, "getfen") == 0) {
-                char* fen = generateFEN(board);
+                char* fen = generateFEN();
                 printf("%s\n", fen);
                 printf("ok\n");
                 fflush(stdout);
@@ -56,7 +73,7 @@ int main(int argc, char* argv[]) {
                     if (len > 0 && fen[len - 1] == '\n') {
                         fen[len - 1] = '\0';
                     }
-                    parseFEN(fen, board);
+                    parseFEN(fen);
                     printf("ok\n");
                     fflush(stdout);
                 }
@@ -90,8 +107,7 @@ int main(int argc, char* argv[]) {
                         }
                         Move move = MOVE((token[0] - 'a') + 8 * (token[1] - '1'),
                                          (token[2] - 'a') + 8 * (token[3] - '1'), extra);
-                        movePiece(board, move);
-                        board->side_to_move = OTHER_SIDE(board->side_to_move);
+                        makeMove(move);
                         token = strtok(NULL, " ");
                     }
                     printf("ok\n");
@@ -100,7 +116,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (strcmp(input, "getstate") == 0) {
-                switch (board->state) {
+                switch (board.state) {
                     case NONE:
                         printf("none\n");
                         break;
@@ -135,14 +151,15 @@ int main(int argc, char* argv[]) {
     }
 
     
-    parseFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", board);
+    parseFEN("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
 
-    while (1) {
-        generateMoves(board);
-        printMoves(board, true);
-        printBoard(board, board->side_to_move);
-        movePiece(board, inputMove());
-        board->side_to_move = OTHER_SIDE(board->side_to_move);
+    // generateMoves(board);
+    for (int i = 1; i <= 6; i++) {
+        clock_t start = clock();
+        int count = checkMoveCount(i, true);
+        clock_t end = clock();
+        double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
+        printf("Move count at depth %d: %d (%.3f seconds)\n", i, count, elapsed);
     }
 
     freeMagic();

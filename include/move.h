@@ -33,10 +33,12 @@ typedef short Move;
 // Make sure to free the result of this function
 char* getNotation(Move move);
 
-void movePiece(Board* board, Move move);
+void makeMove(Move move);
+
+void unmakeMove();
 
 void printMove(Move move);
 
-void printMoves(Board* board, bool numbered);
+void printMoves(bool numbered, Move* moves, byte num_moves);
 
 #endif
