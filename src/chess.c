@@ -3,7 +3,12 @@
 #include "board.h"
 #include "move.h"
 #include "magic.h"
+#include "zobrist_hashing.h"
 
+extern Board board;
+
+extern unsigned long long int repetition_history[1000];
+extern int move_history_count;
 
 Bitboard knightMaps[64];
 Bitboard kingMaps[64];
@@ -14,6 +19,12 @@ Bitboard friendlyPieces;
 Bitboard enemyPieces;
 Bitboard allPieces;
 Bitboard allowed_targets;
+Bitboard pinnedPieces;
+
+Bitboard attackedSquares;
+
+Move* moveList;
+int moveCount = 0;
 
 bool enPassantAllowed = false;
 
@@ -164,50 +175,62 @@ void initMaps() {
     initDirectionalMasks();
 }
 
-void generateMoves(Board* board) {
-    clearMoves(board);
+int generateMoves(Move* move_list) {
+    moveList = move_list;
+    moveCount = 0;
+
     enPassantAllowed = false;
 
-    allPieces = getPieceMask(board);
-    friendlyPieces = getFriendly(board, board->side_to_move);
-    enemyPieces = getFriendly(board, OTHER_SIDE(board->side_to_move));
+    allPieces = getPieceMask();
+    friendlyPieces = getFriendly(board.side_to_move);
+    enemyPieces = getFriendly(OTHER_SIDE(board.side_to_move));
     allowed_targets = ~friendlyPieces;
+
+    attackedSquares = getAttackedMap();
+
+
     for (int i = 0; i < BB_SIZE; i++) {
-        byte piece = getFromLocation(board, i);
+        byte piece = getFromLocation(i);
         byte color = piece & BLACK;
 
-        if (piece == EMPTY || color != board->side_to_move) {
+        if (piece == EMPTY || color != board.side_to_move) {
             continue;
         }
 
         switch (piece & ~BLACK) {
             case BISHOP:
-                generateSlidingMoves(board, i, 0b10);
+                generateSlidingMoves(i, 0b10);
                 break;
             case ROOK:
-                generateSlidingMoves(board, i, 0b01);
+                generateSlidingMoves(i, 0b01);
                 break;
             case QUEEN:
-                generateSlidingMoves(board, i, 0b11);
+                generateSlidingMoves(i, 0b11);
                 break;
             case PAWN:
-                generatePawnMoves(board, i, color);
+                generatePawnMoves(i, color);
                 break;
             case KNIGHT:
-                generateKnightMoves(board, i);
+                generateKnightMoves(i);
                 break;
             case KING:
-                generateKingMoves(board, i);
+                generateKingMoves(i);
                 break;
         }
     }
 
-    filterLegalMoves(board);
+    filterLegalMoves();
+
+    // Add hash to repetition history
+    repetition_history[move_history_count] = getZobristHash();
+    updateBoardState();
+
+    return moveCount;
 }
 
 
 
-void generateSlidingMoves(Board* board, int index, int directions) {
+void generateSlidingMoves(int index, int directions) {
     Bitboard moves = 0;
 
     if (directions & 0b01) {
@@ -221,12 +244,12 @@ void generateSlidingMoves(Board* board, int index, int directions) {
 
     for (int i = 0; i < 64; i++) {
         if (moves & (1LL << i)) {
-            addMove(board, MOVE(index, i, 0));
+            moveList[moveCount++] = MOVE(index, i, 0);
         }
     }
 }
 
-void generatePawnMoves(Board* board, int index, byte color) {
+void generatePawnMoves(int index, byte color) {
     int rank = index / 8;
 
     int forward = color == WHITE ? 8 : -8;
@@ -237,65 +260,65 @@ void generatePawnMoves(Board* board, int index, byte color) {
         if (moves & (1LL << i)) {
             if (i < 8 || i >= 56) {
                 // promotion
-                addMove(board, MOVE(index, i, PROMOTION_KNIGHT));
-                addMove(board, MOVE(index, i, PROMOTION_BISHOP));
-                addMove(board, MOVE(index, i, PROMOTION_ROOK));
-                addMove(board, MOVE(index, i, PROMOTION_QUEEN));
+                moveList[moveCount++] = MOVE(index, i, PROMOTION_KNIGHT);
+                moveList[moveCount++] = MOVE(index, i, PROMOTION_BISHOP);
+                moveList[moveCount++] = MOVE(index, i, PROMOTION_ROOK);
+                moveList[moveCount++] = MOVE(index, i, PROMOTION_QUEEN);
             } else {
-                addMove(board, MOVE(index, i, 0));
+                moveList[moveCount++] = MOVE(index, i, 0);
             }
         }
     }
 
-    if (getFromLocation(board, index + forward) == EMPTY) {
+    if (getFromLocation(index + forward) == EMPTY) {
         if (index + forward < 8 || index + forward >= 56) {
             // promotion
-            addMove(board, MOVE(index, index + forward, PROMOTION_KNIGHT));
-            addMove(board, MOVE(index, index + forward, PROMOTION_BISHOP));
-            addMove(board, MOVE(index, index + forward, PROMOTION_ROOK));
-            addMove(board, MOVE(index, index + forward, PROMOTION_QUEEN));
+            moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_KNIGHT);
+            moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_BISHOP);
+            moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_ROOK);
+            moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_QUEEN);
         } else {
-            addMove(board, MOVE(index, index + forward, 0));
+            moveList[moveCount++] = MOVE(index, index + forward, 0);
         }
 
 
         if (rank == (color == WHITE ? 1 : 6)) {
-            if (getFromLocation(board, index + forward * 2) == EMPTY) {
-                addMove(board, MOVE(index, index + forward * 2, PAWN_LEAP));
+            if (getFromLocation(index + forward * 2) == EMPTY) {
+                moveList[moveCount++] = MOVE(index, index + forward * 2, PAWN_LEAP);
             }
         }
     }
 
     // en passant
-    byte en_passant_file = board->en_passant_file;
+    byte en_passant_file = board.en_passant_file;
     if (en_passant_file >= 0 && en_passant_file < 8) {
         byte en_passant_index = (color == WHITE ? 5 : 2) * 8 + en_passant_file;
         if (attackMap & (1LL << en_passant_index)) { // can en passant
-            addMove(board, MOVE(index, en_passant_index, EN_PASSANT));
+            moveList[moveCount++] = MOVE(index, en_passant_index, EN_PASSANT);
             enPassantAllowed = true; // set flag so we can easily check later if en passant is allowed
         }
     }
 }
 
-void generateKnightMoves(Board* board, int index) {
+void generateKnightMoves(int index) {
     Bitboard moves = knightMaps[index] & allowed_targets;
     for (int i = 0; i < 64; i++) {
         if (moves & (1LL << i)) {
-            addMove(board, MOVE(index, i, 0));
+            moveList[moveCount++] = MOVE(index, i, 0);
         }
     }
 }
 
-void generateKingMoves(Board* board, int index) {
+void generateKingMoves(int index) {
     Bitboard moves = kingMaps[index] & allowed_targets;
     for (int i = 0; i < 64; i++) {
         if (moves & (1LL << i)) {
-            addMove(board, MOVE(index, i, 0));
+            moveList[moveCount++] = MOVE(index, i, 0);
         }
     }
 
-    byte side_to_move = board->side_to_move;
-    byte castling_rights = board->castling_rights;
+    byte side_to_move = board.side_to_move;
+    byte castling_rights = board.castling_rights;
 
 
     // castling
@@ -303,37 +326,37 @@ void generateKingMoves(Board* board, int index) {
         int rook_index = index + (side_to_move ? 3 : -4);
         // assume the rook is on the kingside and not moved when the flag is set
         // check if the squares between the king and rook are empty
-        if (getFromLocation(board, index + 1) == EMPTY && getFromLocation(board, index + 2) == EMPTY) {
-            addMove(board, MOVE(index, index + 2, CASTLE));
+        if (getFromLocation(index + 1) == EMPTY && getFromLocation(index + 2) == EMPTY) {
+            moveList[moveCount++] = MOVE(index, index + 2, CASTLE);
         }
     }
     if (castling_rights & (side_to_move ? CASTLE_BLACK_QUEENSIDE : CASTLE_WHITE_QUEENSIDE)) {
         int rook_index = index + (side_to_move ? -4 : 3);
         // assume the rook is on the queenside and not moved when the flag is set
         // check if the squares between the king and rook are empty
-        if (getFromLocation(board, index - 1) == EMPTY && getFromLocation(board, index - 2) == EMPTY && getFromLocation(board, index - 3) == EMPTY) {
-            addMove(board, MOVE(index, index - 2, CASTLE));
+        if (getFromLocation(index - 1) == EMPTY && getFromLocation(index - 2) == EMPTY && getFromLocation(index - 3) == EMPTY) {
+            moveList[moveCount++] = MOVE(index, index - 2, CASTLE);
         }
     }
 }
 
-void filterLegalMoves(Board* board) {
-    int king_index = getIndex(board, KING | board->side_to_move);
+void filterLegalMoves() {
+    int king_index = getIndex(KING | board.side_to_move);
     
     if (king_index < 0) {
         return; // no king found, something is very wrong
     }
 
 
-    byte color = board->side_to_move;
-    byte enemy_color = OTHER_SIDE(board->side_to_move);
+    byte color = board.side_to_move;
+    byte enemy_color = OTHER_SIDE(board.side_to_move);
 
-    Bitboard all_pieces = getPieceMask(board);
-    Bitboard friendly_pieces = getFriendly(board, board->side_to_move);
+    Bitboard all_pieces = getPieceMask();
+    Bitboard friendly_pieces = getFriendly(board.side_to_move);
 
     // sliding pins
-    Bitboard enemy_rooks = board->bitboards[ROOK | enemy_color] | board->bitboards[QUEEN | enemy_color];
-    Bitboard enemy_bishops = board->bitboards[BISHOP | enemy_color] | board->bitboards[QUEEN | enemy_color];
+    Bitboard enemy_rooks = board.bitboards[ROOK | enemy_color] | board.bitboards[QUEEN | enemy_color];
+    Bitboard enemy_bishops = board.bitboards[BISHOP | enemy_color] | board.bitboards[QUEEN | enemy_color];
     Bitboard rook_sliders = getRookAttacks(king_index, enemy_rooks);
     Bitboard bishop_sliders = getBishopAttacks(king_index, enemy_bishops);
 
@@ -341,7 +364,7 @@ void filterLegalMoves(Board* board) {
     int ep_square = -1;
     if (enPassantAllowed) {
         // check if the removal of the en passant pawn is in the sliders maps
-        ep_square = (color == WHITE ? 4 : 3) * 8 + board->en_passant_file;
+        ep_square = (color == WHITE ? 4 : 3) * 8 + board.en_passant_file;
         solvedEnPassant = !(((rook_sliders | bishop_sliders) & ~(directionalMasks[2][king_index] | directionalMasks[3][king_index])) & (1LL << ep_square));
     }
 
@@ -368,17 +391,31 @@ void filterLegalMoves(Board* board) {
 
                 if (j < 2 && !solvedEnPassant && pinnedCount == 2 && (pinned_pieces & (1LL << ep_square))) {
                     // remove all en passant moves
-                    for (int i = 0; i < board->num_moves; i++) {
-                        Move move = board->moves[i];
+                    for (int i = 0; i < moveCount; i++) {
+                        Move move = moveList[i];
                         if (EXTRA(move) == EN_PASSANT) {
-                            board->moves[i--] = board->moves[--board->num_moves];
+                            moveList[i--] = moveList[--moveCount];
                         }
                     }
 
                     solvedEnPassant = true;
                 }
 
-                continue; // Either there is no pinned piece, or there are multiple pinned pieces, which are then not locked
+                if (pinnedCount == 0) {
+                    // no pinned pieces, the king is in check
+                    // remove all moves that do not end on the mask (unless it's a king move)
+                    for (int i = 0; i < moveCount; i++) {
+                        Move move = moveList[i];
+                        if ((!(pin_mask & (1LL << TO(move))) && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) {
+                            // this move is illegal, remove it
+                            moveList[i--] = moveList[--moveCount]; // replace with the last move, and check this index again
+                        }
+                    }
+                    
+                    // even thought the king is in check, we still need to block pinned pieces
+                }
+
+                continue;
             }
 
             // there is exactly one pinned piece, if this is a friendly piece, it's considered pinned
@@ -388,21 +425,21 @@ void filterLegalMoves(Board* board) {
                 int pinned_index = countTrailingZeros(friendly_pinned); // get the index of the pinned piece
                 
                 // remove all moves that start with the pinned piece and end not on the mask
-                for (int i = 0; i < board->num_moves; i++) {
-                    Move move = board->moves[i];
-                    if (FROM(move) == pinned_index && !(mask & (1LL << TO(move)))) {
+                for (int i = 0; i < moveCount; i++) {
+                    Move move = moveList[i];
+                    if (FROM(move) == pinned_index && !(pin_mask & (1LL << TO(move)))) {
                         // this move is illegal, remove it
-                        board->moves[i--] = board->moves[--board->num_moves]; // replace with the last move, and check this index again
+                        moveList[i--] = moveList[--moveCount]; // replace with the last move, and check this index again
                     }
                 }
             }
 
             if (!solvedEnPassant && (pinned_pieces & (1LL << ep_square))) {
                 // remove all en passant moves
-                for (int i = 0; i < board->num_moves; i++) {
-                    Move move = board->moves[i];
+                for (int i = 0; i < moveCount; i++) {
+                    Move move = moveList[i];
                     if (EXTRA(move) == EN_PASSANT) {
-                        board->moves[i--] = board->moves[--board->num_moves];
+                        moveList[i--] = moveList[--moveCount];
                     }
                 }
 
@@ -410,4 +447,178 @@ void filterLegalMoves(Board* board) {
             }
         }
     }
+
+    // check if the king is in check by a knight
+    Bitboard enemy_knights = board.bitboards[KNIGHT | enemy_color];
+
+    if (knightMaps[king_index] & enemy_knights) {
+        int knight_index = countTrailingZeros(knightMaps[king_index] & enemy_knights);
+        // remove all moves that do not end on the knight
+        for (int i = 0; i < moveCount; i++) {
+            Move move = moveList[i];
+            if ((TO(move) != knight_index && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) {
+                // this move is illegal, remove it
+                moveList[i--] = moveList[--moveCount]; // replace with the last move, and check this index again
+            }
+        }
+    } else {
+        // check if the king is in check by a pawn
+
+        Bitboard enemy_pawns = board.bitboards[PAWN | enemy_color];
+        Bitboard king_pawn_attacks = pawnAttackMaps[king_index + (color == WHITE ? 0 : 64)];
+
+        if (enemy_pawns & king_pawn_attacks) {
+            // the king is in check by a pawn, remove all moves that do not end on the pawn
+            int pawn_index = countTrailingZeros(enemy_pawns & king_pawn_attacks);
+            for (int i = 0; i < moveCount; i++) {
+                Move move = moveList[i];
+                if (((TO(move) != pawn_index && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) && (EXTRA(move) != EN_PASSANT)) {
+                    // this move is illegal, remove it
+                    moveList[i--] = moveList[--moveCount]; // replace with the last move, and check this index again
+                }
+            }
+        }
+    }
+
+    // finally remove king moves that would put the king in check
+    for (int i = 0; i < moveCount; i++) {
+        Move move = moveList[i];
+        if (FROM(move) == king_index) {
+            int target_index = TO(move);
+            if (UNDER_ATTACK(target_index)) {
+                // this move is illegal, remove it
+                moveList[i--] = moveList[--moveCount]; // replace with the last move, and check this index again
+            }
+        }
+    }
+
+    if (color == WHITE) {
+        // check castling rights
+        if (board.castling_rights & CASTLE_WHITE_KINGSIDE) {
+            // check if the king can castle kingside
+            if (UNDER_ATTACK(5)) {
+                // remove the kingside castling move
+                for (int i = 0; i < moveCount; i++) {
+                    Move move = moveList[i];
+                    if (TO(move) == 6 && EXTRA(move) == CASTLE) {
+                        moveList[i--] = moveList[--moveCount]; // remove the kingside castling move
+                        break;
+                    }
+                }
+            }
+        }
+        if (board.castling_rights & CASTLE_WHITE_QUEENSIDE) {
+            // check if the king can castle queenside
+            if (UNDER_ATTACK(3)) {
+                // remove the queenside castling move
+                for (int i = 0; i < moveCount; i++) {
+                    Move move = moveList[i];
+                    if (TO(move) == 2 && EXTRA(move) == CASTLE) {
+                        moveList[i--] = moveList[--moveCount]; // remove the queenside castling move
+                        break;
+                    }
+                }
+            }
+        }
+    } else {
+        // check castling rights
+        if (board.castling_rights & CASTLE_BLACK_KINGSIDE) {
+            // check if the king can castle kingside
+            if (UNDER_ATTACK(61)) {
+                // remove the kingside castling move
+                for (int i = 0; i < moveCount; i++) {
+                    Move move = moveList[i];
+                    if (TO(move) == 62 && EXTRA(move) == CASTLE) {
+                        moveList[i--] = moveList[--moveCount]; // remove the kingside castling move
+                        break;
+                    }
+                }
+            }
+        }
+        if (board.castling_rights & CASTLE_BLACK_QUEENSIDE) {
+            // check if the king can castle queenside
+            if (UNDER_ATTACK(59)) {
+                // remove the queenside castling move
+                for (int i = 0; i < moveCount; i++) {
+                    Move move = moveList[i];
+                    if (TO(move) == 58 && EXTRA(move) == CASTLE) {
+                        moveList[i--] = moveList[--moveCount]; // remove the queenside castling move
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+Bitboard getAttackedMap() {
+    Bitboard attacked_map = 0;
+
+    byte other_color = OTHER_SIDE(board.side_to_move);
+
+    Bitboard all_except_king = allPieces & ~(board.bitboards[KING | board.side_to_move]);
+
+    for (int i = 0; i < BB_SIZE; i++) {
+        byte piece = getFromLocation(i);
+        if (piece == EMPTY || (piece & BLACK) != other_color) {
+            continue; // only consider enemy pieces
+        }
+
+        switch (piece & ~BLACK) {
+            case BISHOP:
+                attacked_map |= getBishopAttacks(i, all_except_king);
+                break;
+            case ROOK:
+                attacked_map |= getRookAttacks(i, all_except_king);
+                break;
+            case QUEEN:
+                attacked_map |= getBishopAttacks(i, all_except_king) | getRookAttacks(i, all_except_king);
+                break;
+            case PAWN:
+                attacked_map |= pawnAttackMaps[i + (other_color == WHITE ? 0 : 64)];
+                break;
+            case KNIGHT:
+                attacked_map |= knightMaps[i];
+                break;
+            case KING:
+                attacked_map |= kingMaps[i];
+                break;
+        }
+    }
+
+    return attacked_map;
+}
+
+void updateBoardState() {
+    if (moveCount == 0) {
+        // no moves available, check if the king is in check
+        int king_index = getIndex(KING | board.side_to_move);
+
+        if (UNDER_ATTACK(king_index)) {
+            board.state = CHECKMATE; // king is in checkmate
+        } else {
+            board.state = STALEMATE; // king is not in check, but no moves available
+        }
+        return;
+    }
+
+    if (board.halfmove_clock >= 100) {
+        board.state = FIFTY_MOVE_DRAW; // fifty move rule
+        return;
+    }
+
+    // check for threefold repetition
+    unsigned long long int hash = repetition_history[move_history_count];
+    // check backwards in the history for the same hash
+    int count = 1;
+    for (int i = move_history_count - 1; i >= 0; i--) {
+        if (repetition_history[i] == hash) {
+            if (++count >= 3) {
+                board.state = THREEFOLD_REPETITION; // threefold repetition
+                return;
+            }
+        }
+    }
+
+    board.state = NONE; // no special state
 }

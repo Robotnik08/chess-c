@@ -13,17 +13,23 @@ void initKingMaps();
 void initPawnAttackMaps();
 void initDirectionalMasks();
 
+#define UNDER_ATTACK(index) (attackedSquares & (1ULL << index))
 
-void generateMoves(Board* board);
 
-void generateSlidingMoves(Board* board, int index, int directions);
+int generateMoves(Move* move_list);
 
-void generatePawnMoves(Board* board, int index, byte color);
+void generateSlidingMoves(int index, int directions);
 
-void generateKnightMoves(Board* board, int index);
+void generatePawnMoves(int index, byte color);
 
-void generateKingMoves(Board* board, int index);
+void generateKnightMoves(int index);
 
-void filterLegalMoves(Board* board);
+void generateKingMoves(int index);
+
+void filterLegalMoves();
+
+Bitboard getAttackedMap();
+
+void updateBoardState();
 
 #endif

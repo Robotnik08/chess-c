@@ -8,7 +8,7 @@ typedef unsigned long long int Bitboard;
 #define BB_MAXVAL 14
 #define BB_SIZE 64
 #define NUM_SQUARES 64
-#define MAX_MOVES 218
+#define MAX_MOVES 256
 
 #define WHITE 0
 #define BLACK 8
@@ -27,6 +27,16 @@ typedef unsigned long long int Bitboard;
 #define CASTLE_BLACK_KINGSIDE 4
 #define CASTLE_BLACK_QUEENSIDE 8
 
+typedef enum {
+    NONE = 0,
+
+    CHECKMATE,
+    STALEMATE,
+    FIFTY_MOVE_DRAW,
+    THREEFOLD_REPETITION,
+    INSUFFICIENT_MATERIAL
+} BoardState;
+
 typedef struct {
     Bitboard bitboards [BB_MAXVAL];
 
@@ -37,9 +47,7 @@ typedef struct {
     short halfmove_clock;
     short fullmove_number;
 
-
-    short moves [MAX_MOVES];
-    byte num_moves;
+    BoardState state;
 } Board;
 
 typedef struct {
@@ -53,24 +61,18 @@ typedef struct {
 
 bool checkInBounds(Coord coord);
 
-void printBoard(Board* board, byte display_side);
+void printBoard(byte display_side);
 
 char getPieceLetter(byte piece);
 
-byte getFromLocation(Board* board, byte index);
+byte getFromLocation(byte index);
 
-Bitboard getFriendly(Board* board, byte color);
+Bitboard getFriendly(byte color);
 
-Bitboard getPieceMask(Board* board);
+Bitboard getPieceMask();
 
 void setSquare(Bitboard *b, byte value);
 
-void addMoves(Board* board, short moves[], int len);
-
-void addMove(Board* board, short move);
-
-void clearMoves(Board* board);
-
-int getIndex(Board* board, byte piece);
+int getIndex(byte piece);
 
 #endif // BOARD_H
