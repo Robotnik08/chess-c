@@ -5,6 +5,7 @@
 #include "board.h"
 
 void parseFEN(char* fen);
+
 char* generateFEN();
 
 #endif
