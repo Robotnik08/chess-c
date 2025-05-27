@@ -7,17 +7,21 @@
 // F: from square
 // T: to square
 // E: extra info
-// EEEETTTT TTFFFFFF
+// R: irreversable move flag
+// REEETTTT TTFFFFFF
 typedef short Move;
 
 #include "board.h"
 
 #define MOVE_LOCATION_MASK 0b111111
-#define MOVE_TYPE_MASK 0b1111
+#define MOVE_TYPE_MASK 0b111
 
 #define FROM(move) ((move) & MOVE_LOCATION_MASK)
 #define TO(move) (((move) >> 6) & MOVE_LOCATION_MASK)
 #define EXTRA(move) (((move) >> 12) & MOVE_TYPE_MASK)
+#define IS_IRREVERSABLE(move) ((move) >> 15)
+
+#define IRREVERSABLE 0b1000000000000000 // 15th bit is set if the move is irreversable
 
 #define MOVE(from, to, extra) ((from) | ((to) << 6) | ((extra) << 12))
 

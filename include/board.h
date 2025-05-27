@@ -48,13 +48,6 @@ typedef struct {
     short fullmove_number;
 
     BoardState state;
-
-    short move_history [1000]; // assuming a maximum of 1000 moves in a game (which isn't true, but is still more then enough for practical purposes)
-    byte capture_history [1000]; // stores the captured piece for each move
-    byte castling_rights_history [1000]; // stores the castling rights for each move
-    char en_passant_file_history [1000]; // stores the en passant file for each move
-
-    int move_history_count;
 } Board;
 
 typedef struct {

@@ -3,6 +3,13 @@
 
 extern Board board;
 
+extern short move_history [1000];
+extern byte capture_history [1000];
+extern byte castling_rights_history [1000]; 
+extern char en_passant_file_history [1000];
+extern short halfmove_clock_history [1000];
+
+extern int move_history_count;
 
 char* getNotation(Move move) {
     int from = FROM(move);
@@ -42,17 +49,26 @@ void makeMove(Move move) {
     // remove the captured piece
     if (captured != EMPTY) {
         board.bitboards[captured] ^= (1LL << to);
+        move |= IRREVERSABLE; // mark the move as irreversable if a piece was captured
+    }
+
+    if ((piece & ~BLACK) == PAWN || extra) {
+        move |= IRREVERSABLE;
     }
 
     int side_to_move = board.side_to_move;
 
     // update the move history
-    board.move_history[board.move_history_count] = move;
-    board.capture_history[board.move_history_count] = captured;
-    board.castling_rights_history[board.move_history_count] = board.castling_rights;
-    board.en_passant_file_history[board.move_history_count] = board.en_passant_file;
+    capture_history[move_history_count] = captured;
+    castling_rights_history[move_history_count] = board.castling_rights;
+    en_passant_file_history[move_history_count] = board.en_passant_file;
+    halfmove_clock_history[move_history_count] = board.halfmove_clock;
 
-    board.move_history_count++;
+    if (move & IRREVERSABLE) {
+        board.halfmove_clock = 0; // reset the halfmove clock if the move is irreversable
+    } else {
+        board.halfmove_clock++; // increment the halfmove clock if the move is not irreversable
+    }
 
     // move the piece
     board.bitboards[piece] ^= (1LL << from);
@@ -66,12 +82,16 @@ void makeMove(Move move) {
     byte castlingrights = board.castling_rights;
     if (castlingrights & CASTLE_WHITE_KINGSIDE && (from == 7 || to == 7)) { // if something captured the rook, or the rook moved
         board.castling_rights ^= CASTLE_WHITE_KINGSIDE;
+        move |= IRREVERSABLE; // mark the move as irreversable if castling rights are changed
     } else if (castlingrights & CASTLE_WHITE_QUEENSIDE && (from == 0 || to == 0)) { // if something captured the rook, or the rook moved
         board.castling_rights &= ~CASTLE_WHITE_QUEENSIDE;
+        move |= IRREVERSABLE;
     } else if (castlingrights & CASTLE_BLACK_KINGSIDE && (from == 63 || to == 63)) { // if something captured the rook, or the rook moved
         board.castling_rights &= ~CASTLE_BLACK_KINGSIDE;
+        move |= IRREVERSABLE;
     } else if (castlingrights & CASTLE_BLACK_QUEENSIDE && (from == 56 || to == 56)) { // if something captured the rook, or the rook moved
         board.castling_rights &= ~CASTLE_BLACK_QUEENSIDE;
+        move |= IRREVERSABLE;
     }
 
     if (from == 4) { // white king moved
@@ -111,25 +131,46 @@ void makeMove(Move move) {
     }
 
     board.side_to_move = OTHER_SIDE(side_to_move); // switch sides
+    
+    move_history[move_history_count] = move;
+
+    move_history_count++;
+
+    if (side_to_move == BLACK) {
+        board.fullmove_number++;
+    }
 }
 
 void unmakeMove() {
-    if (board.move_history_count == 0) {
+    if (move_history_count == 0) {
         return; // no moves to unmake
     }
+
+    board.state = NONE; // reset the board state (unmaking a move always removes a draw or checkmate state)
 
     int side_to_move = OTHER_SIDE(board.side_to_move);
     board.side_to_move = side_to_move; // switch sides back
 
-    Move move = board.move_history[--board.move_history_count];
+    Move move = move_history[--move_history_count];
     int from = FROM(move);
     int to = TO(move);
+
+    board.fullmove_number -= (side_to_move == BLACK); // decrement fullmove number if we just unmade a black move
+    board.halfmove_clock = halfmove_clock_history[move_history_count]; // restore the halfmove clock
+    board.castling_rights = castling_rights_history[move_history_count];
+    board.en_passant_file = en_passant_file_history[move_history_count];
+    
+    if (!IS_IRREVERSABLE(move)) { // if the move is not irreversable, we can just move the piece back and not have to worry about the rest of the logic
+        int piece = getFromLocation(to);
+        board.bitboards[piece] ^= (1LL << to);
+        board.bitboards[piece] |= (1LL << from);
+        return;
+    }
+
     int extra = EXTRA(move);
 
     int piece = getFromLocation(to);
-    int captured = board.capture_history[board.move_history_count];
-
-    board.en_passant_file = board.en_passant_file_history[board.move_history_count];
+    int captured = capture_history[move_history_count];
 
     // restore the captured piece
     if (captured != EMPTY) {
@@ -143,7 +184,6 @@ void unmakeMove() {
     }
     board.bitboards[piece] |= (1LL << from);
 
-    board.castling_rights = board.castling_rights_history[board.move_history_count];
     if (from == 4) { // white king moved
         if (extra == CASTLE) {
             if (to == 6) { // kingside castle

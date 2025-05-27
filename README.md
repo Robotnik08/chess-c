@@ -31,6 +31,6 @@ Chess implementation in C
 
 - [X] Checkmate
 - [X] Stalemate
-- [ ] Draw by repetition
-- [ ] Fifty-move rule
+- [X] Draw by repetition
+- [X] Fifty-move rule
 - [ ] Draw by insufficient material

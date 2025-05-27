@@ -3,8 +3,12 @@
 #include "board.h"
 #include "move.h"
 #include "magic.h"
+#include "zobrist_hashing.h"
 
 extern Board board;
+
+extern unsigned long long int repetition_history[1000];
+extern int move_history_count;
 
 Bitboard knightMaps[64];
 Bitboard kingMaps[64];
@@ -217,6 +221,8 @@ int generateMoves(Move* move_list) {
 
     filterLegalMoves();
 
+    // Add hash to repetition history
+    repetition_history[move_history_count] = getZobristHash();
     updateBoardState();
 
     return moveCount;
@@ -457,23 +463,16 @@ void filterLegalMoves() {
         }
     } else {
         // check if the king is in check by a pawn
+
         Bitboard enemy_pawns = board.bitboards[PAWN | enemy_color];
-        int left_pawn_index = (color == WHITE ? king_index + 7 : king_index - 9);
-        int right_pawn_index = (color == WHITE ? king_index + 9 : king_index - 7);
-        if (enemy_pawns & (1LL << left_pawn_index)) {
-            // remove all moves that do not end on the left pawn
+        Bitboard king_pawn_attacks = pawnAttackMaps[king_index + (color == WHITE ? 0 : 64)];
+
+        if (enemy_pawns & king_pawn_attacks) {
+            // the king is in check by a pawn, remove all moves that do not end on the pawn
+            int pawn_index = countTrailingZeros(enemy_pawns & king_pawn_attacks);
             for (int i = 0; i < moveCount; i++) {
                 Move move = moveList[i];
-                if ((TO(move) != left_pawn_index && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) {
-                    // this move is illegal, remove it
-                    moveList[i--] = moveList[--moveCount]; // replace with the last move, and check this index again
-                }
-            }
-        } else if (enemy_pawns & (1LL << right_pawn_index)) {
-            // remove all moves that do not end on the right pawn
-            for (int i = 0; i < moveCount; i++) {
-                Move move = moveList[i];
-                if ((TO(move) != right_pawn_index && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) {
+                if (((TO(move) != pawn_index && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) && (EXTRA(move) != EN_PASSANT)) {
                     // this move is illegal, remove it
                     moveList[i--] = moveList[--moveCount]; // replace with the last move, and check this index again
                 }
@@ -594,16 +593,31 @@ void updateBoardState() {
     if (moveCount == 0) {
         // no moves available, check if the king is in check
         int king_index = getIndex(KING | board.side_to_move);
-        if (king_index < 0) {
-            board.state = INSUFFICIENT_MATERIAL; // no king found, something is very wrong
-            return;
-        }
+
         if (UNDER_ATTACK(king_index)) {
             board.state = CHECKMATE; // king is in checkmate
         } else {
             board.state = STALEMATE; // king is not in check, but no moves available
         }
         return;
+    }
+
+    if (board.halfmove_clock >= 100) {
+        board.state = FIFTY_MOVE_DRAW; // fifty move rule
+        return;
+    }
+
+    // check for threefold repetition
+    unsigned long long int hash = repetition_history[move_history_count];
+    // check backwards in the history for the same hash
+    int count = 1;
+    for (int i = move_history_count - 1; i >= 0; i--) {
+        if (repetition_history[i] == hash) {
+            if (++count >= 3) {
+                board.state = THREEFOLD_REPETITION; // threefold repetition
+                return;
+            }
+        }
     }
 
     board.state = NONE; // no special state

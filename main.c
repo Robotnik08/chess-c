@@ -4,12 +4,23 @@
 #include "move.h"
 #include "magic.h"
 #include "FEN.h"
+#include "zobrist_hashing.h"
 
 #include <time.h>
 
 Board board;
 
-int checkMoveCount (int depth, bool root) {
+short move_history [1000];
+short halfmove_clock_history [1000];
+byte capture_history [1000];
+byte castling_rights_history [1000];
+char en_passant_file_history [1000];
+
+unsigned long long int repetition_history[1000];
+
+int move_history_count;
+
+int perft(int depth, bool root) {
     if (depth == 0) {
         return 1;
     }
@@ -21,7 +32,7 @@ int checkMoveCount (int depth, bool root) {
     for (int i = 0; i < num_moves; i++) {
         // Board backup = board; // backup the current board state
         makeMove(moves[i]);
-        int count = checkMoveCount(depth - 1, false);
+        int count = perft(depth - 1, false);
         nodes += count;
         // if (root) {
         //     char* notation = getNotation(moves[i]);
@@ -37,6 +48,8 @@ int checkMoveCount (int depth, bool root) {
 }
 
 int main(int argc, char* argv[]) {
+    initZobristHashing();
+
     initMaps();
     initMagic();
 
@@ -74,6 +87,7 @@ int main(int argc, char* argv[]) {
                         fen[len - 1] = '\0';
                     }
                     parseFEN(fen);
+                    repetition_history[0] = getZobristHash();
                     printf("ok\n");
                     fflush(stdout);
                 }
@@ -108,6 +122,8 @@ int main(int argc, char* argv[]) {
                         Move move = MOVE((token[0] - 'a') + 8 * (token[1] - '1'),
                                          (token[2] - 'a') + 8 * (token[3] - '1'), extra);
                         makeMove(move);
+                        repetition_history[move_history_count] = getZobristHash();
+
                         token = strtok(NULL, " ");
                     }
                     printf("ok\n");
@@ -151,12 +167,11 @@ int main(int argc, char* argv[]) {
     }
 
     
-    parseFEN("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
+    parseFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-    // generateMoves(board);
-    for (int i = 1; i <= 6; i++) {
+    for (int i = 0; i <= 5; i++) {
         clock_t start = clock();
-        int count = checkMoveCount(i, true);
+        int count = perft(i, true);
         clock_t end = clock();
         double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
         printf("Move count at depth %d: %d (%.3f seconds)\n", i, count, elapsed);

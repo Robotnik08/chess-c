@@ -160,8 +160,12 @@ char* generateFEN() {
     int halfmove_clock = board.halfmove_clock;
     if (halfmove_clock < 10) {
         fen[index++] = '0' + halfmove_clock;
-    } else {
+    } else if (halfmove_clock < 100) {
         fen[index++] = '0' + (halfmove_clock / 10);
+        fen[index++] = '0' + (halfmove_clock % 10);
+    } else {
+        fen[index++] = '0' + (halfmove_clock / 100);
+        fen[index++] = '0' + ((halfmove_clock / 10) % 10);
         fen[index++] = '0' + (halfmove_clock % 10);
     }
 
@@ -170,8 +174,12 @@ char* generateFEN() {
     int fullmove_number = board.fullmove_number;
     if (fullmove_number < 10) {
         fen[index++] = '0' + fullmove_number;
-    } else {
+    } else if (fullmove_number < 100) {
         fen[index++] = '0' + (fullmove_number / 10);
+        fen[index++] = '0' + (fullmove_number % 10);
+    } else {
+        fen[index++] = '0' + (fullmove_number / 100);
+        fen[index++] = '0' + ((fullmove_number / 10) % 10);
         fen[index++] = '0' + (fullmove_number % 10);
     }
     fen[index] = '\0';
