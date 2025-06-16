@@ -102,6 +102,14 @@ extern char* generateFEN();
 
 #define WHITE 0
 #define BLACK 8
+
+#define PAWN 0
+#define KNIGHT 1
+#define BISHOP 2
+#define ROOK 3
+#define QUEEN 4
+#define KING 5
+
 #define OTHER_SIDE(side_to_move) ((side_to_move) ? WHITE : BLACK)
 
 extern char* getNotation(Move move);
