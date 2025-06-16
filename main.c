@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
         while (1) {
             char input[255];
             scanf("%s", input);
-            input[255] = '\0';
+            input[254] = '\0';
 
             if (strcmp(input, "getmoves") == 0) {
                 Move moves[MAX_MOVES];

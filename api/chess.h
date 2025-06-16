@@ -89,6 +89,8 @@ extern char* generateFEN();
 
 #define MOVE(from, to, extra) ((from) | ((to) << 6) | ((extra) << 12))
 
+#define NULL_MOVE 0
+
 #define NORMAL 0
 #define EN_PASSANT 1
 #define PAWN_LEAP 2
@@ -97,6 +99,16 @@ extern char* generateFEN();
 #define PROMOTION_BISHOP 5
 #define PROMOTION_ROOK 6
 #define PROMOTION_QUEEN 7
+
+extern char* getNotation(Move move);
+
+extern void makeMove(Move move);
+
+extern void unmakeMove();
+
+extern void printMove(Move move);
+
+extern void printMoves(bool numbered, Move* moves, byte num_moves);
 
 
 //// zobrist_hashing.h
