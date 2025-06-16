@@ -100,6 +100,10 @@ extern char* generateFEN();
 #define PROMOTION_ROOK 6
 #define PROMOTION_QUEEN 7
 
+#define WHITE 0
+#define BLACK 8
+#define OTHER_SIDE(side_to_move) ((side_to_move) ? WHITE : BLACK)
+
 extern char* getNotation(Move move);
 
 extern void makeMove(Move move);
