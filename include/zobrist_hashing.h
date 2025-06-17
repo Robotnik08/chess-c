@@ -4,7 +4,7 @@
 #include "common.h"
 #include "board.h"
 
-void initZobristHashing();
+void initZobristHashing(long long int seed);
 
 unsigned long long int getZobristHash();
 

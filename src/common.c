@@ -25,10 +25,9 @@ void printBits(unsigned long long int n) {
     putchar('\n');
 }
 
-int random_counter;
+int random_counter = 0;
 
 long long int pseudoRandom(long long int seed) {
-    random_counter = 0;
     // A simple linear congruential generator (LCG)
     return (seed * 6364136223846793005LL + 1) & 0xFFFFFFFFFFFFFFFFLL;
 }

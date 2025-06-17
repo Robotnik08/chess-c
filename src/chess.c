@@ -221,9 +221,14 @@ int generateMoves(Move* move_list) {
 
     filterLegalMoves();
 
-    // Add hash to repetition history
+    // add hash to repetition history
     repetition_history[move_history_count] = getZobristHash();
     updateBoardState();
+
+    if (board.state != NONE) {
+        // the game is over
+        moveCount = 0;
+    }
 
     return moveCount;
 }

@@ -48,7 +48,7 @@ int perft(int depth, bool root) {
 }
 
 void init() {
-    initZobristHashing();
+    initZobristHashing(0);
     initMaps();
     initMagic();
 }

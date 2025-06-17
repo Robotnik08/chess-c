@@ -8,18 +8,18 @@ unsigned long long int zobristSideKey;
 unsigned long long int zobristCastlingKeys[16]; // 2^4 for castling rights (4 bits)
 unsigned long long int zobristEnPassantKeys[8]; // 8 files for en passant (1 bit each)
 
-void initZobristHashing() {
+void initZobristHashing(long long int seed) {
     for (int i = 0; i < BB_MAXVAL; i++) {
         for (int j = 0; j < NUM_SQUARES; j++) {
-            zobristKeys[i][j] = random64(i * NUM_SQUARES + j);
+            zobristKeys[i][j] = random64(seed);
         }
     }
-    zobristSideKey = random64(0);
+    zobristSideKey = random64(seed);
     for (int i = 0; i < 16; i++) {
-        zobristCastlingKeys[i] = random64(i);
+        zobristCastlingKeys[i] = random64(seed);
     }
     for (int i = 0; i < 8; i++) {
-        zobristEnPassantKeys[i] = random64(i);
+        zobristEnPassantKeys[i] = random64(seed);
     }
 }
 
