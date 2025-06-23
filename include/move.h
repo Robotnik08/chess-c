@@ -25,6 +25,8 @@ typedef short Move;
 
 #define MOVE(from, to, extra) ((from) | ((to) << 6) | ((extra) << 12))
 
+#define NULL_MOVE 0
+
 #define NORMAL 0
 #define EN_PASSANT 1
 #define PAWN_LEAP 2

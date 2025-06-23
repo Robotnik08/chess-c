@@ -16,7 +16,7 @@ void initDirectionalMasks();
 #define UNDER_ATTACK(index) (attackedSquares & (1ULL << index))
 
 
-int generateMoves(Move* move_list);
+int generateMoves(Move* move_list, bool only_captures);
 
 void generateSlidingMoves(int index, int directions);
 
@@ -30,6 +30,6 @@ void filterLegalMoves();
 
 Bitboard getAttackedMap();
 
-void updateBoardState();
+void updateBoardState(bool check_insufficient_material);
 
 #endif

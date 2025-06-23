@@ -175,60 +175,89 @@ void initMaps() {
     initDirectionalMasks();
 }
 
-int generateMoves(Move* move_list) {
+int generateMoves(Move* move_list, bool only_captures) {
     moveList = move_list;
     moveCount = 0;
 
     enPassantAllowed = false;
 
+    int side_to_move = board.side_to_move;
+
     allPieces = getPieceMask();
-    friendlyPieces = getFriendly(board.side_to_move);
-    enemyPieces = getFriendly(OTHER_SIDE(board.side_to_move));
+    friendlyPieces = getFriendly(side_to_move);
+    enemyPieces = getFriendly(OTHER_SIDE(side_to_move));
     allowed_targets = ~friendlyPieces;
 
     attackedSquares = getAttackedMap();
 
+    // Move generation for each piece
+    Bitboard pawnBoard = board.bitboards[PAWN | side_to_move];
+    while (pawnBoard) {
+        int index = __builtin_ctzll(pawnBoard);
+        pawnBoard &= pawnBoard - 1;
 
-    for (int i = 0; i < BB_SIZE; i++) {
-        byte piece = getFromLocation(i);
-        byte color = piece & BLACK;
-
-        if (piece == EMPTY || color != board.side_to_move) {
-            continue;
-        }
-
-        switch (piece & ~BLACK) {
-            case BISHOP:
-                generateSlidingMoves(i, 0b10);
-                break;
-            case ROOK:
-                generateSlidingMoves(i, 0b01);
-                break;
-            case QUEEN:
-                generateSlidingMoves(i, 0b11);
-                break;
-            case PAWN:
-                generatePawnMoves(i, color);
-                break;
-            case KNIGHT:
-                generateKnightMoves(i);
-                break;
-            case KING:
-                generateKingMoves(i);
-                break;
-        }
+        generatePawnMoves(index, side_to_move);
     }
 
+    Bitboard knightBoard = board.bitboards[KNIGHT | side_to_move];
+    while (knightBoard) {
+        int index = __builtin_ctzll(knightBoard);
+        knightBoard &= knightBoard - 1;
+
+        generateKnightMoves(index);
+    }
+
+    Bitboard bishopBoard = board.bitboards[BISHOP | side_to_move];
+    while (bishopBoard) {
+        int index = __builtin_ctzll(bishopBoard);
+        bishopBoard &= bishopBoard - 1;
+
+        generateSlidingMoves(index, 0b10); // bishop moves
+    }
+
+    Bitboard rookBoard = board.bitboards[ROOK | side_to_move];
+    while (rookBoard) {
+        int index = __builtin_ctzll(rookBoard);
+        rookBoard &= rookBoard - 1;
+
+        generateSlidingMoves(index, 0b01); // rook moves
+    }
+
+    Bitboard queenBoard = board.bitboards[QUEEN | side_to_move];
+    while (queenBoard) {
+        int index = __builtin_ctzll(queenBoard);
+        queenBoard &= queenBoard - 1;
+
+        generateSlidingMoves(index, 0b11); // queen moves
+    }
+    
+    generateKingMoves(__builtin_ctzll(board.bitboards[KING | side_to_move]));
+
+    // filter out moves that would leave the king in check
     filterLegalMoves();
 
-    // Add hash to repetition history
+    // add hash to repetition history
     repetition_history[move_history_count] = getZobristHash();
-    updateBoardState();
+    updateBoardState(true);
+
+    if (board.state != NONE) {
+        // the game is over
+        moveCount = 0;
+    }
+
+    if (only_captures) {
+        // filter out non-capturing moves
+        int filteredCount = 0;
+        for (int i = 0; i < moveCount; i++) {
+            if (EXTRA(moveList[i]) == EN_PASSANT || getFromLocation(TO(moveList[i])) != EMPTY) {
+                moveList[filteredCount++] = moveList[i];
+            }
+        }
+        moveCount = filteredCount;
+    }
 
     return moveCount;
 }
-
-
 
 void generateSlidingMoves(int index, int directions) {
     Bitboard moves = 0;
@@ -242,10 +271,11 @@ void generateSlidingMoves(int index, int directions) {
 
     moves &= allowed_targets;
 
-    for (int i = 0; i < 64; i++) {
-        if (moves & (1LL << i)) {
-            moveList[moveCount++] = MOVE(index, i, 0);
-        }
+    while (moves) {
+        int targetIndex = __builtin_ctzll(moves);
+        moves &= moves - 1;
+
+        moveList[moveCount++] = MOVE(index, targetIndex, 0);
     }
 }
 
@@ -256,27 +286,38 @@ void generatePawnMoves(int index, byte color) {
 
     Bitboard attackMap = pawnAttackMaps[index + (color == WHITE ? 0 : 64)];
     Bitboard moves = attackMap & enemyPieces; // only attack enemy pieces
-    for (int i = 0; i < 64; i++) {
-        if (moves & (1LL << i)) {
-            if (i < 8 || i >= 56) {
-                // promotion
-                moveList[moveCount++] = MOVE(index, i, PROMOTION_KNIGHT);
-                moveList[moveCount++] = MOVE(index, i, PROMOTION_BISHOP);
-                moveList[moveCount++] = MOVE(index, i, PROMOTION_ROOK);
-                moveList[moveCount++] = MOVE(index, i, PROMOTION_QUEEN);
-            } else {
-                moveList[moveCount++] = MOVE(index, i, 0);
-            }
+    while (moves) {
+        int targetIndex = __builtin_ctzll(moves);
+        moves &= moves - 1;
+
+        if (targetIndex < 8 || targetIndex >= 56) {
+            // promotion
+            moveList[moveCount++] = MOVE(index, targetIndex, PROMOTION_QUEEN);
+            moveList[moveCount++] = MOVE(index, targetIndex, PROMOTION_ROOK);
+            moveList[moveCount++] = MOVE(index, targetIndex, PROMOTION_BISHOP);
+            moveList[moveCount++] = MOVE(index, targetIndex, PROMOTION_KNIGHT);
+        } else {
+            moveList[moveCount++] = MOVE(index, targetIndex, 0);
+        }
+    }
+    
+    // en passant
+    byte en_passant_file = board.en_passant_file;
+    if (en_passant_file >= 0 && en_passant_file < 8) {
+        byte en_passant_index = (color == WHITE ? 5 : 2) * 8 + en_passant_file;
+        if (attackMap & (1LL << en_passant_index)) { // can en passant
+            moveList[moveCount++] = MOVE(index, en_passant_index, EN_PASSANT);
+            enPassantAllowed = true; // set flag so we can easily check later if en passant is allowed
         }
     }
 
     if (getFromLocation(index + forward) == EMPTY) {
         if (index + forward < 8 || index + forward >= 56) {
             // promotion
-            moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_KNIGHT);
-            moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_BISHOP);
-            moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_ROOK);
             moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_QUEEN);
+            moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_ROOK);
+            moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_BISHOP);
+            moveList[moveCount++] = MOVE(index, index + forward, PROMOTION_KNIGHT);
         } else {
             moveList[moveCount++] = MOVE(index, index + forward, 0);
         }
@@ -288,33 +329,25 @@ void generatePawnMoves(int index, byte color) {
             }
         }
     }
-
-    // en passant
-    byte en_passant_file = board.en_passant_file;
-    if (en_passant_file >= 0 && en_passant_file < 8) {
-        byte en_passant_index = (color == WHITE ? 5 : 2) * 8 + en_passant_file;
-        if (attackMap & (1LL << en_passant_index)) { // can en passant
-            moveList[moveCount++] = MOVE(index, en_passant_index, EN_PASSANT);
-            enPassantAllowed = true; // set flag so we can easily check later if en passant is allowed
-        }
-    }
 }
 
 void generateKnightMoves(int index) {
     Bitboard moves = knightMaps[index] & allowed_targets;
-    for (int i = 0; i < 64; i++) {
-        if (moves & (1LL << i)) {
-            moveList[moveCount++] = MOVE(index, i, 0);
-        }
+    while (moves) {
+        int targetIndex = __builtin_ctzll(moves);
+        moves &= moves - 1;
+
+        moveList[moveCount++] = MOVE(index, targetIndex, 0);
     }
 }
 
 void generateKingMoves(int index) {
     Bitboard moves = kingMaps[index] & allowed_targets;
-    for (int i = 0; i < 64; i++) {
-        if (moves & (1LL << i)) {
-            moveList[moveCount++] = MOVE(index, i, 0);
-        }
+    while (moves) {
+        int targetIndex = __builtin_ctzll(moves);
+        moves &= moves - 1;
+
+        moveList[moveCount++] = MOVE(index, targetIndex, 0);
     }
 
     byte side_to_move = board.side_to_move;
@@ -385,7 +418,7 @@ void filterLegalMoves() {
         if (is_xray) {
             Bitboard pinned_pieces = pin_mask & all_pieces;
             
-            int pinnedCount = countBits(pinned_pieces) - 1; // the attacker itself is not pinned
+            int pinnedCount = __builtin_popcountll(pinned_pieces) - 1; // the attacker itself is not pinned
 
             if (pinnedCount != 1) {
 
@@ -422,7 +455,7 @@ void filterLegalMoves() {
 
             Bitboard friendly_pinned = pinned_pieces & friendly_pieces;
             if (friendly_pinned) {
-                int pinned_index = countTrailingZeros(friendly_pinned); // get the index of the pinned piece
+                int pinned_index = __builtin_ctzll(friendly_pinned); // get the index of the pinned piece
                 
                 // remove all moves that start with the pinned piece and end not on the mask
                 for (int i = 0; i < moveCount; i++) {
@@ -452,7 +485,7 @@ void filterLegalMoves() {
     Bitboard enemy_knights = board.bitboards[KNIGHT | enemy_color];
 
     if (knightMaps[king_index] & enemy_knights) {
-        int knight_index = countTrailingZeros(knightMaps[king_index] & enemy_knights);
+        int knight_index = __builtin_ctzll(knightMaps[king_index] & enemy_knights);
         // remove all moves that do not end on the knight
         for (int i = 0; i < moveCount; i++) {
             Move move = moveList[i];
@@ -469,7 +502,7 @@ void filterLegalMoves() {
 
         if (enemy_pawns & king_pawn_attacks) {
             // the king is in check by a pawn, remove all moves that do not end on the pawn
-            int pawn_index = countTrailingZeros(enemy_pawns & king_pawn_attacks);
+            int pawn_index = __builtin_ctzll(enemy_pawns & king_pawn_attacks);
             for (int i = 0; i < moveCount; i++) {
                 Move move = moveList[i];
                 if (((TO(move) != pawn_index && FROM(move) != king_index) || (EXTRA(move) == CASTLE)) && (EXTRA(move) != EN_PASSANT)) {
@@ -558,38 +591,82 @@ Bitboard getAttackedMap() {
 
     Bitboard all_except_king = allPieces & ~(board.bitboards[KING | board.side_to_move]);
 
-    for (int i = 0; i < BB_SIZE; i++) {
-        byte piece = getFromLocation(i);
-        if (piece == EMPTY || (piece & BLACK) != other_color) {
-            continue; // only consider enemy pieces
-        }
+    int pawn_offset = other_color == WHITE ? 0 : 64;
 
-        switch (piece & ~BLACK) {
-            case BISHOP:
-                attacked_map |= getBishopAttacks(i, all_except_king);
-                break;
-            case ROOK:
-                attacked_map |= getRookAttacks(i, all_except_king);
-                break;
-            case QUEEN:
-                attacked_map |= getBishopAttacks(i, all_except_king) | getRookAttacks(i, all_except_king);
-                break;
-            case PAWN:
-                attacked_map |= pawnAttackMaps[i + (other_color == WHITE ? 0 : 64)];
-                break;
-            case KNIGHT:
-                attacked_map |= knightMaps[i];
-                break;
-            case KING:
-                attacked_map |= kingMaps[i];
-                break;
-        }
+    // iterate over all piece types
+    Bitboard pawnBoard = board.bitboards[PAWN | other_color];
+    while (pawnBoard) {
+        int index = __builtin_ctzll(pawnBoard);
+        pawnBoard &= pawnBoard - 1;
+
+        attacked_map |= pawnAttackMaps[index + pawn_offset];
+    }
+
+    Bitboard knightBoard = board.bitboards[KNIGHT | other_color];
+    while (knightBoard) {
+        int index = __builtin_ctzll(knightBoard);
+        knightBoard &= knightBoard - 1;
+
+        attacked_map |= knightMaps[index];
+    }
+
+    Bitboard bishopBoard = board.bitboards[BISHOP | other_color];
+    while (bishopBoard) {
+        int index = __builtin_ctzll(bishopBoard);
+        bishopBoard &= bishopBoard - 1;
+
+        attacked_map |= getBishopAttacks(index, all_except_king);
+    }
+
+    Bitboard rookBoard = board.bitboards[ROOK | other_color];
+    while (rookBoard) {
+        int index = __builtin_ctzll(rookBoard);
+        rookBoard &= rookBoard - 1;
+
+        attacked_map |= getRookAttacks(index, all_except_king);
+    }
+
+    Bitboard queenBoard = board.bitboards[QUEEN | other_color];
+    while (queenBoard) {
+        int index = __builtin_ctzll(queenBoard);
+        queenBoard &= queenBoard - 1;
+
+        attacked_map |= getBishopAttacks(index, all_except_king) | getRookAttacks(index, all_except_king);
+    }
+
+    Bitboard kingBoard = board.bitboards[KING | other_color];
+    while (kingBoard) {
+        int index = __builtin_ctzll(kingBoard);
+        kingBoard &= kingBoard - 1;
+
+        attacked_map |= kingMaps[index];
     }
 
     return attacked_map;
 }
 
-void updateBoardState() {
+Bitboard getAttackedMapOnlyPawn() {
+    Bitboard attacked_map = 0;
+
+    byte other_color = OTHER_SIDE(board.side_to_move);
+
+    Bitboard all_except_king = allPieces & ~(board.bitboards[KING | board.side_to_move]);
+
+    int pawn_offset = other_color == WHITE ? 0 : 64;
+    
+    // only pawns
+    Bitboard pawnBoard = board.bitboards[PAWN | other_color];
+    while (pawnBoard) {
+        int index = __builtin_ctzll(pawnBoard);
+        pawnBoard &= pawnBoard - 1;
+
+        attacked_map |= pawnAttackMaps[index + pawn_offset];
+    }
+
+    return attacked_map;
+}
+
+void updateBoardState(bool check_insufficient_material) {
     if (moveCount == 0) {
         // no moves available, check if the king is in check
         int king_index = getIndex(KING | board.side_to_move);
@@ -620,5 +697,28 @@ void updateBoardState() {
         }
     }
 
-    board.state = NONE; // no special state
+    if (check_insufficient_material) {
+
+        if ((board.bitboards[PAWN | WHITE] | board.bitboards[PAWN | BLACK]) == 0) { // no pawns on the board
+            
+            if ((board.bitboards[ROOK | WHITE] | board.bitboards[QUEEN | WHITE]) == 0 &&
+                (board.bitboards[ROOK | BLACK] | board.bitboards[QUEEN | BLACK]) == 0) { // no rooks or queens on the board
+
+                int white_knights = __builtin_popcountll(board.bitboards[KNIGHT | WHITE]);
+                int white_bishops = __builtin_popcountll(board.bitboards[BISHOP | WHITE]);
+
+                if (white_knights + white_bishops < 2) { // check if white has less than 2 minor pieces
+                    int black_knights = __builtin_popcountll(board.bitboards[KNIGHT | BLACK]);
+                    int black_bishops = __builtin_popcountll(board.bitboards[BISHOP | BLACK]);
+
+                    if (black_knights + black_bishops < 2) { // check if black has less than 2 minor pieces
+                        board.state = INSUFFICIENT_MATERIAL; // insufficient material for both sides
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    board.state = NONE; // no special state   
 }
