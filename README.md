@@ -33,4 +33,4 @@ Chess implementation in C
 - [X] Stalemate
 - [X] Draw by repetition
 - [X] Fifty-move rule
-- [ ] Draw by insufficient material
+- [X] Draw by insufficient material
