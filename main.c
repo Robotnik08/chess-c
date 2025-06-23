@@ -47,18 +47,18 @@ int perft(int depth, bool root) {
     return nodes;
 }
 
-void init() {
+void initChess() {
     initZobristHashing(0);
     initMaps();
     initMagic();
 }
 
-void cleanup() {
+void cleanupChess() {
     freeMagic();
 }
 
 int main(int argc, char* argv[]) {
-    init();
+    initChess();
 
     if (argc == 2 && strcmp(argv[1], "engine") == 0) {
         while (1) {
@@ -169,7 +169,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        cleanup();
+        cleanupChess();
         return 0;
     }
 
@@ -184,6 +184,6 @@ int main(int argc, char* argv[]) {
         printf("Move count at depth %d: %d (%.3f seconds)\n", i, count, elapsed);
     }
 
-    cleanup();
+    cleanupChess();
     return 0;
 }

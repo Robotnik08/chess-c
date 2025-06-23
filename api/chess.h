@@ -146,9 +146,9 @@ extern unsigned long long int getZobristHash();
 
 //// main
 
-extern void init();
+extern void initChess();
 
-extern void cleanup();
+extern void cleanupChess();
 
 
 #ifdef __cplusplus
