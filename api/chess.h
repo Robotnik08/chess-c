@@ -12,10 +12,6 @@ extern "C" {
 #include <string.h>
 #include <stdbool.h>
 
-int countBits(unsigned long long int n);
-
-int countTrailingZeros(unsigned long long int n);
-
 // format:
 // F: from square
 // T: to square
@@ -71,8 +67,13 @@ extern int getIndex(byte piece);
 
 //// chess.h
 
-extern int generateMoves(Move* move_list);
+extern int generateMoves(Move* move_list, bool only_captures);
 
+extern Bitboard getAttackedMap();
+
+extern Bitboard getAttackedMapOnlyPawn();
+
+extern void updateBoardState(bool check_insufficient_material);
 
 //// FEN.h
 
@@ -106,6 +107,8 @@ extern char* generateFEN();
 #define PROMOTION_ROOK 6
 #define PROMOTION_QUEEN 7
 
+#define PROMOTION_MASK 0b100 // 3rd bit is set if the move is a promotion
+
 #define WHITE 0
 #define BLACK 8
 
@@ -115,6 +118,13 @@ extern char* generateFEN();
 #define ROOK 3
 #define QUEEN 4
 #define KING 5
+
+#define EMPTY 255 // special value for empty square
+
+#define PIECE_MASK 0b111 // 3 bits for piece type
+
+#define COLOR(piece) ((piece) & BLACK)
+#define TYPE(piece) ((piece) & PIECE_MASK)
 
 #define OTHER_SIDE(side_to_move) ((side_to_move) ? WHITE : BLACK)
 

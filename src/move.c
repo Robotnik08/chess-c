@@ -52,7 +52,7 @@ void makeMove(Move move) {
         move |= IRREVERSABLE; // mark the move as irreversable if a piece was captured
     }
 
-    if ((piece & ~BLACK) == PAWN || extra) {
+    if (TYPE(piece) == PAWN || extra) {
         move |= IRREVERSABLE;
     }
 

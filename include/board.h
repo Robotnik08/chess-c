@@ -20,6 +20,11 @@ typedef unsigned long long int Bitboard;
 #define QUEEN 4
 #define KING 5
 
+#define PIECE_MASK 0b111 // 3 bits for piece type
+
+#define COLOR(piece) ((piece) & BLACK)
+#define TYPE(piece) ((piece) & PIECE_MASK)
+
 #define EMPTY 255
 
 #define CASTLE_WHITE_KINGSIDE 1

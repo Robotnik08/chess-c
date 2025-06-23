@@ -26,7 +26,7 @@ int perft(int depth, bool root) {
     }
 
     Move moves[MAX_MOVES];
-    int num_moves = generateMoves(moves);
+    int num_moves = generateMoves(moves, false);
     int nodes = 0;
 
     for (int i = 0; i < num_moves; i++) {
@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
 
             if (strcmp(input, "getmoves") == 0) {
                 Move moves[MAX_MOVES];
-                int n = generateMoves(moves);
+                int n = generateMoves(moves, false);
                 printMoves(false, moves, n);
                 printf("ok\n");
                 fflush(stdout);

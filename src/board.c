@@ -55,9 +55,12 @@ char getPieceLetter(byte piece) {
 }
 
 byte getFromLocation(byte index) {
-    for (int i = 0; i < BB_MAXVAL; i++) {
-        if (board.bitboards[i] & (1LL << index)) {
-            return i;
+    for (int i = PAWN; i <= KING; i++) {
+        if (board.bitboards[i | WHITE] & (1LL << index)) {
+            return i | WHITE;
+        }
+        if (board.bitboards[i | BLACK] & (1LL << index)) {
+            return i | BLACK;
         }
     }
     return EMPTY;
@@ -84,10 +87,10 @@ void setSquareOnBoard(byte index, byte piece, byte color) {
 }
 
 int getIndex(byte piece) {
-    for (int i = 0; i < 64; i++) {
-        if (board.bitboards[piece] & (1ULL << i)) {
-            return i;
-        }
+    Bitboard bb = board.bitboards[piece];
+    if (bb) {
+        return __builtin_ctzll(bb);
     }
-    return -1;
+
+    return -1; // piece not found
 }

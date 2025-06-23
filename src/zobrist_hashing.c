@@ -26,22 +26,25 @@ void initZobristHashing(long long int seed) {
 unsigned long long int getZobristHash() {
     unsigned long long int hash = 0;
 
-    // Add piece positions
+    // add piece positions
     for (int i = 0; i < BB_MAXVAL; i++) {
         Bitboard bitboard = board.bitboards[i];
         while (bitboard) {
-            int square = countTrailingZeros(bitboard);
+            int square = __builtin_ctzll(bitboard);
             hash ^= zobristKeys[i][square];
-            bitboard &= bitboard - 1; // Clear the least significant bit
+            bitboard &= bitboard - 1;
         }
     }
-    // Add side to move
+
+    // add side to move
     if (board.side_to_move) {
         hash ^= zobristSideKey;
     }
-    // Add castling rights
+
+    // add castling rights
     hash ^= zobristCastlingKeys[board.castling_rights];
-    // Add en passant square
+    
+    // add en passant square
     if (board.en_passant_file >= 0) {
         hash ^= zobristEnPassantKeys[board.en_passant_file];
     }
