@@ -138,6 +138,7 @@ extern void printMove(Move move);
 
 extern void printMoves(bool numbered, Move* moves, byte num_moves);
 
+extern Move stringToMove(const char* str);
 
 //// zobrist_hashing.h
 

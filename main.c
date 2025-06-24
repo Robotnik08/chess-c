@@ -114,20 +114,7 @@ int main(int argc, char* argv[]) {
 
                     char* token = strtok(moves, " ");
                     while (token != NULL) {
-                        int extra = 0;
-                        if (token[4] != '\0') {
-                            switch (token[4]) {
-                                case 'e': extra = EN_PASSANT; break;
-                                case 'l': extra = PAWN_LEAP; break;
-                                case 'o': extra = CASTLE; break;
-                                case 'n': extra = PROMOTION_KNIGHT; break;
-                                case 'b': extra = PROMOTION_BISHOP; break;
-                                case 'r': extra = PROMOTION_ROOK; break;
-                                case 'q': extra = PROMOTION_QUEEN; break;
-                            }
-                        }
-                        Move move = MOVE((token[0] - 'a') + 8 * (token[1] - '1'),
-                                         (token[2] - 'a') + 8 * (token[3] - '1'), extra);
+                        Move move = stringToMove(token);
                         makeMove(move);
                         repetition_history[move_history_count] = getZobristHash();
 

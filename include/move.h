@@ -47,4 +47,6 @@ void printMove(Move move);
 
 void printMoves(bool numbered, Move* moves, byte num_moves);
 
+Move stringToMove(const char* str);
+
 #endif

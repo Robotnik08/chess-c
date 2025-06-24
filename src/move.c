@@ -228,3 +228,20 @@ void printMoves(bool numbered, Move* moves, byte num_moves) {
         printMove(moves[i]);
     }
 }
+
+Move stringToMove(const char* str) {
+    int extra = 0;
+    if (str[4] != '\0') {
+        switch (str[4]) {
+            case 'e': extra = EN_PASSANT; break;
+            case 'l': extra = PAWN_LEAP; break;
+            case 'o': extra = CASTLE; break;
+            case 'n': extra = PROMOTION_KNIGHT; break;
+            case 'b': extra = PROMOTION_BISHOP; break;
+            case 'r': extra = PROMOTION_ROOK; break;
+            case 'q': extra = PROMOTION_QUEEN; break;
+        }
+    }
+    return MOVE((str[0] - 'a') + 8 * (str[1] - '1'),
+                (str[2] - 'a') + 8 * (str[3] - '1'), extra);
+}
