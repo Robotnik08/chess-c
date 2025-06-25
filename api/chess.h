@@ -25,6 +25,8 @@ typedef short Move;
 typedef unsigned char byte;
 typedef unsigned long long int Bitboard;
 
+#define BITBOARD_FULL 0xFFFFFFFFFFFFFFFFULL // Full bitboard (64 bits set to 1)
+
 #define MAX_MOVES 256
 
 #define BB_MAXVAL 14
