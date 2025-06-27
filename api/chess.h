@@ -75,7 +75,7 @@ extern Bitboard getAttackedMap();
 
 extern Bitboard getAttackedMapOnlyPawn();
 
-extern void updateBoardState(bool check_insufficient_material);
+extern void updateBoardState(bool check_insufficient_material, bool only_draws);
 
 //// FEN.h
 

@@ -237,8 +237,7 @@ int generateMoves(Move* move_list, bool only_captures) {
     filterLegalMoves();
 
     // add hash to repetition history
-    repetition_history[move_history_count] = getZobristHash();
-    updateBoardState(true);
+    updateBoardState(true, false);
 
     if (board.state != NONE) {
         // the game is over
@@ -666,8 +665,9 @@ Bitboard getAttackedMapOnlyPawn() {
     return attacked_map;
 }
 
-void updateBoardState(bool check_insufficient_material) {
-    if (moveCount == 0) {
+void updateBoardState(bool check_insufficient_material, bool only_draws) {
+    repetition_history[move_history_count] = getZobristHash();
+    if (!only_draws && moveCount == 0) {
         // no moves available, check if the king is in check
         int king_index = getIndex(KING | board.side_to_move);
 

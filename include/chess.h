@@ -30,6 +30,6 @@ void filterLegalMoves();
 
 Bitboard getAttackedMap();
 
-void updateBoardState(bool check_insufficient_material);
+void updateBoardState(bool check_insufficient_material, bool only_draws);
 
 #endif
